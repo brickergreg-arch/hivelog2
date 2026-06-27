@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HiveLog</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#1a1208;color:#f5e6c8;margin:0;padding:10px}
+h1{margin:10px 0}
+.nav{display:flex;gap:10px;margin-bottom:10px}
+button{background:#3a2812;color:#f5e6c8;border:none;padding:8px 10px;border-radius:4px}
+.active{outline:2px solid gold}
+.hive, .panel{background:#2b1e0e;padding:10px;margin-bottom:10px;border-radius:6px}
+.row{display:flex;gap:5px;margin:6px 0}
+.frame{flex:1;padding:8px;background:#3a2812;text-align:center;cursor:pointer;font-size:11px}
+.selected{outline:2px solid gold}
+input, select, textarea{width:100%;margin:6px 0;background:#3a2812;color:#f5e6c8;border:1px solid #444;padding:6px;border-radius:4px}
+.small{font-size:12px;opacity:.8}
+.list-item{border-bottom:1px solid #3a2812;padding:6px 0}
+img{margin:4px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>🐝 HiveLog</h1>
+<div class="nav">
+  <button onclick="show('hives')" id="tab-hives" class="active">My Hives</button>
+  <button onclick="show('inspect')" id="tab-inspect">Inspect</button>
+  <button onclick="show('history')" id="tab-history">History</button>
+</div>
+
+<div id="hives" class="panel"></div>
+<div id="inspect" class="panel" style="display:none"></div>
+<div id="history" class="panel" style="display:none"></div>
+
+<script>
+let data = { hives: [] };
+let selectedHive = 0;
+let selectedFrames = new Set();
+let tempPhotos = [];
+
+function show(name){
+  ['hives','inspect','history'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById(name).style.display='block';
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  render();
+}
+
+function addHive(){
+  data.hives.push({ name:'Hive '+(data.hives.length+1), boxes:[], history:[] });
+  selectedHive = data.hives.length-1;
+  render();
+}
+
+function addBox(){
+  const count = parseInt(document.getElementById('frameCount').value);
+  const frames=[];
+  for(let i=1;i<=count;i++) frames.push({ id:Date.now()+i, name:'F'+i, editing:false });
+  data.hives[selectedHive].boxes.push(frames);
+  render();
+}
+
+function render(){
+  renderHives();
+  renderInspect();
+  renderHistory();
+}
+
+function renderHives(){
+  const el = document.getElementById('hives');
+  let h = '<div class="small">Hives</div>';
+  h += '<div class="row"><button onclick="addHive()">Add Hive</button></div>';
+
+  data.hives.forEach((hv,i)=>{
+    h += `<div class="hive"><b onclick="selectHive(${i})">${hv.name}</b>`;
+    hv.boxes.forEach(box=>{
+      h += '<div class="row">';
+      box.forEach(f=>{ h += `<div class="frame">${f.name}</div>`; });
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function selectHive(i){ selectedHive = i; render(); }
+
+function renderInspect(){
+  const hv = data.hives[selectedHive];
+  const el = document.getElementById('inspect');
+  if(!hv){ el.innerHTML = 'Create a hive first'; return; }
+
+  let h = '<div class="small">Add Box</div>';
+  h += `
+    <div class="row">
+      <select id="frameCount">
+        <option value="8">8 Frames</option>
+        <option value="10">10 Frames</option>
+      </select>
+      <button onclick="addBox()">Add</button>
+      <button onclick="batchRename()">Batch Rename</button>
+    </div>`;
+
+  hv.boxes.forEach((box,bi)=>{
+    h += '<div class="hive">';
+    h += `<div class="small">Box ${bi+1}</div>`;
+    h += '<div class="row">';
+
+    box.forEach(f=>{
+      h += `<div class="frame ${selectedFrames.has(f.id)?'selected':''}" onclick="toggleFrame(${f.id})" ondblclick="editFrame(${f.id})">`;
+      if(f.editing){
+        h += `<input value="${f.name}" onblur="saveFrame(${f.id},this.value)">`;
+      } else {
+        h += f.name;
+      }
+      h += '</div>';
+    });
+
+    h += '</div>';
+    h += '</div>';
+  });
+
+  h += `
+    <textarea id="notes" placeholder="Notes..."></textarea>
+    <input type="file" multiple accept="image/*" onchange="handlePhotos(event)">
+    <button onclick="saveInspection()">Save Inspection</button>`;
+
+  el.innerHTML = h;
+}
+
+function toggleFrame(id){
+  if(selectedFrames.has(id)) selectedFrames.delete(id);
+  else selectedFrames.add(id);
+  render();
+}
+
+function editFrame(id){
+  const hv = data.hives[selectedHive];
+  hv.boxes.flat().forEach(f=>{ if(f.id===id) f.editing=true; });
+  render();
+}
+
+function saveFrame(id,val){
+  const hv = data.hives[selectedHive];
+  hv.boxes.flat().forEach(f=>{
+    if(f.id===id){ f.name = val||f.name; f.editing=false; }
+  });
+  render();
+}
+
+function batchRename(){
+  const prefix = prompt("Enter prefix:");
+  if(!prefix) return;
+
+  let i=1;
+  data.hives[selectedHive].boxes.flat().forEach(f=>{
+    if(selectedFrames.has(f.id)){
+      f.name = prefix + "-" + i++;
+    }
+  });
+
+  selectedFrames.clear();
+  render();
+}
+
+function handlePhotos(e){
+  tempPhotos = [];
+  Array.from(e.target.files).forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ()=> tempPhotos.push(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+function saveInspection(){
+  const hv = data.hives[selectedHive];
+  const notes = document.getElementById('notes').value;
+
+  hv.history.push({
+    date:new Date().toLocaleString(),
+    notes,
+    photos: [...tempPhotos]
+  });
+
+  tempPhotos = [];
+  selectedFrames.clear();
+  render();
+}
+
+function renderHistory(){
+  const hv = data.hives[selectedHive];
+  const el = document.getElementById('history');
+  if(!hv){ el.innerHTML=''; return; }
+
+  let h = '<div class="small">History</div>';
+
+  hv.history.forEach(item=>{
+    h += `<div class="list-item">
+      <b>${item.date}</b><br>${item.notes}<br>
+      ${(item.photos||[]).map(p=>`<img src="${p}" width="80">`).join("")}
+    </div>`;
+  });
+
+  el.innerHTML = h;
+}
+</script>
+
+</body>
+</html>

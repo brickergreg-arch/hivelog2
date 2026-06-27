@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>HiveLog – Frame Tracker</title>
+  <title>HiveLog – Advanced Frame Tracker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
+    <!-- SIDEBAR -->
     <aside class="sidebar">
       <header class="sidebar-header">
         <h1>HiveLog</h1>
@@ -33,6 +34,7 @@
       </section>
     </aside>
 
+    <!-- MAIN -->
     <main class="main">
       <header class="main-header">
         <div>
@@ -46,6 +48,7 @@
       <section class="frame-grid" id="frameGrid"></section>
     </main>
 
+    <!-- FRAME DETAIL DRAWER -->
     <aside class="frame-detail" id="frameDetail" hidden>
       <header class="frame-detail-header">
         <h2 id="frameDetailTitle">Frame</h2>
@@ -74,7 +77,7 @@
           <input id="framePhotoInput" type="url" placeholder="https://…" />
         </label>
 
-        <div class="frame-photo-preview" id="framePhotoPreview"></div>
+        <div class="frame-photo-preview" id="framePhotoPreview">No photo</div>
 
         <button id="saveFrameBtn">Save frame</button>
       </section>

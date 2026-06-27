@@ -7,6 +7,7 @@ let state = {
   currentFrameId: null,
 };
 
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

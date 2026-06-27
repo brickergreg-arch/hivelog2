@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<title>HiveLog</title>
+<style>
+body{font-family:Arial;background:#1a1208;color:#f5e6c8;margin:0;padding:10px}
+h1{margin:10px 0}
+.hive{background:#2b1e0e;padding:10px;margin-bottom:15px;border-radius:6px}
+.box{display:flex;gap:5px;margin:10px 0}
+.frame{flex:1;padding:8px;background:#3a2812;text-align:center;cursor:pointer;font-size:10px}
+.selected{outline:2px solid gold}
+input{width:100%;text-align:center}
+.controls{margin:10px 0}
+</style>
+</head>
+<body>
+<h1>🐝 HiveLog</h1>
+
+<div class='controls'>
+Add Box:
+<select id='frameCount'>
+<option value='8'>8 Frames</option>
+<option value='10'>10 Frames</option>
+</select>
+<button onclick='addBox()'>Add</button>
+</div>
+
+<div id='hives'></div>
+
+<script>
+let hive={boxes:[]};
+let selected=new Set();
+
+function addBox(){
+  let count=parseInt(document.getElementById('frameCount').value);
+  let frames=[];
+  for(let i=1;i<=count;i++){
+    frames.push({id:Date.now()+i,name:'F'+i,editing:false});
+  }
+  hive.boxes.push(frames);
+  render();
+}
+
+function render(){
+  const root=document.getElementById('hives');
+  root.innerHTML='';
+
+  hive.boxes.forEach((box,bIndex)=>{
+    const boxDiv=document.createElement('div');
+    boxDiv.className='hive';
+
+    const row=document.createElement('div');
+    row.className='box';
+
+    box.forEach(f=>{
+      const div=document.createElement('div');
+      div.className='frame '+(selected.has(f.id)?'selected':'');
+
+      if(f.editing){
+        const input=document.createElement('input');
+        input.value=f.name;
+        input.onblur=()=>{
+          f.name=input.value||f.name;
+          f.editing=false;
+          render();
+        };
+        div.appendChild(input);
+        setTimeout(()=>input.focus(),0);
+      } else {
+        const span=document.createElement('span');
+        span.textContent=f.name;
+
+        span.onclick=()=>{
+          if(selected.has(f.id)) selected.delete(f.id);
+          else selected.add(f.id);
+          render();
+        };
+
+        span.ondblclick=()=>{
+          f.editing=true;
+          render();
+        };
+
+        div.appendChild(span);
+      }
+
+      row.appendChild(div);
+    });
+
+    boxDiv.appendChild(row);
+    root.appendChild(boxDiv);
+  });
+}
+
+render();
+</script>
+</body>
+</html>

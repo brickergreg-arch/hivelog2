@@ -39,70 +39,46 @@
           <h2 id="currentHiveTitle">No hive selected</h2>
           <p id="currentBoxTitle"></p>
         </div>
-        <div class="inspection-meta">
-          <label>
-            Inspection date:
-            <input id="inspectionDateInput" type="date" />
-          </label>
-          <label>
-            Weather:
-            <input id="weatherInput" type="text" placeholder="Sunny, 75°F" />
-          </label>
-          <label>
-            Nectar flow:
-            <input id="nectarInput" type="text" placeholder="Light / Moderate / Heavy" />
-          </label>
-          <label>
-            Temperament:
-            <input id="temperamentInput" type="text" placeholder="Calm / Defensive" />
-          </label>
-          <button id="saveInspectionBtn">Save inspection</button>
-        </div>
       </header>
 
-      <section class="content">
-        <section class="box-overview">
-          <h3>Frames overview</h3>
-          <div id="frameGrid" class="frame-grid"></div>
-        </section>
+      <section class="box-tabs" id="boxTabs"></section>
 
-        <section class="frame-detail">
-          <h3 id="frameDetailTitle">Select a frame</h3>
-          <div class="frame-detail-body">
-            <div class="frame-detail-column">
-              <h4>Status tags</h4>
-              <div id="statusTags" class="tags">
-                <button data-tag="brood">Brood</button>
-                <button data-tag="honey">Honey</button>
-                <button data-tag="pollen">Pollen</button>
-                <button data-tag="queen_cells">Queen cells</button>
-                <button data-tag="comb_new">New comb</button>
-                <button data-tag="comb_old">Old comb</button>
-                <button data-tag="damage">Damage / cross comb</button>
-              </div>
-
-              <h4>Notes</h4>
-              <textarea id="notesInput" rows="8"
-                placeholder="Queen sighted, brood pattern, mites, odd behavior, repairs, feeding notes..."></textarea>
-              <button id="saveFrameBtn">Save frame</button>
-            </div>
-
-            <div class="frame-detail-column">
-              <h4>Frame photo</h4>
-              <input id="photoInput" type="file" accept="image/*" />
-              <div id="photoPreview" class="photo-preview">
-                <span class="placeholder">No photo yet</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="inspection-timeline">
-          <h3>Inspection history</h3>
-          <div id="inspectionList" class="inspection-list"></div>
-        </section>
-      </section>
+      <section class="frame-grid" id="frameGrid"></section>
     </main>
+
+    <aside class="frame-detail" id="frameDetail" hidden>
+      <header class="frame-detail-header">
+        <h2 id="frameDetailTitle">Frame</h2>
+        <button id="closeFrameDetailBtn">×</button>
+      </header>
+
+      <section class="frame-detail-body">
+        <label>
+          Status:
+          <select id="frameStatusSelect">
+            <option value="">–</option>
+            <option value="brood">Brood</option>
+            <option value="honey">Honey</option>
+            <option value="mixed">Mixed</option>
+            <option value="empty">Empty</option>
+          </select>
+        </label>
+
+        <label>
+          Notes:
+          <textarea id="frameNotesInput" rows="5" placeholder="Inspection notes..."></textarea>
+        </label>
+
+        <label>
+          Photo URL:
+          <input id="framePhotoInput" type="url" placeholder="https://…" />
+        </label>
+
+        <div class="frame-photo-preview" id="framePhotoPreview"></div>
+
+        <button id="saveFrameBtn">Save frame</button>
+      </section>
+    </aside>
   </div>
 
   <script src="script.js"></script>

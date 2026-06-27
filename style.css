@@ -1,4 +1,142 @@
-/* BROWSER-STYLE TABS (RECTANGULAR) */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #1a1208; /* deep brown */
+  color: #f5e6c8;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  width: 280px;
+  background: #2b1e0e;
+  color: #f5e6c8;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-right: 2px solid #d4891a;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sidebar-header h1 {
+  font-size: 20px;
+  margin: 0;
+  color: #ffcc66;
+}
+
+.sidebar-header button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  background: #d4891a;
+  color: #1a1208;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.sidebar-header button:hover {
+  background: #ffb84d;
+}
+
+.hive-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.hive-item {
+  padding: 8px;
+  border-radius: 6px;
+  background: #3a2915;
+  margin-bottom: 6px;
+  cursor: pointer;
+  border: 1px solid #d4891a33;
+}
+
+.hive-item:hover {
+  background: #4a341c;
+}
+
+.hive-item.active {
+  background: #d4891a;
+  color: #1a1208;
+  font-weight: bold;
+}
+
+/* BOX CONFIG */
+
+.box-config {
+  background: #3a2915;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #d4891a55;
+}
+
+.box-config h2 {
+  margin-top: 0;
+  color: #ffcc66;
+}
+
+.box-config label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.box-config input,
+.box-config select {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #d4891a55;
+  background: #2b1e0e;
+  color: #f5e6c8;
+}
+
+#addBoxBtn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border-radius: 6px;
+  border: none;
+  background: #d4891a;
+  color: #1a1208;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* MAIN */
+
+.main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.main-header h2 {
+  margin: 0;
+  font-size: 26px;
+  color: #ffcc66;
+}
+
+/* BROWSER-STYLE TABS */
 
 .box-tabs {
   margin-top: 16px;
@@ -27,4 +165,74 @@
   color: #1a1208;
   border-color: #ffcc66;
   z-index: 2;
+}
+
+/* FRAME GRID */
+
+.frame-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.frame-card {
+  background: #3a2915;
+  border: 1px solid #d4891a55;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.frame-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 12px rgba(255,200,80,0.4);
+}
+
+.frame-card h3 {
+  margin: 0 0 6px 0;
+  color: #ffcc66;
+}
+
+/* FRAME DETAIL DRAWER */
+
+.frame-detail {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 360px;
+  height: 100vh;
+  background: #2b1e0e;
+  border-left: 2px solid #d4891a;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.frame-detail h2 {
+  margin-top: 0;
+  color: #ffcc66;
+}
+
+.frame-detail input,
+.frame-detail textarea,
+.frame-detail select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid #d4891a55;
+  background: #3a2915;
+  color: #f5e6c8;
+}
+
+.frame-detail button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #d4891a;
+  color: #1a1208;
+  font-weight: bold;
+  cursor: pointer;
 }

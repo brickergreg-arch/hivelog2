@@ -440,6 +440,7 @@ body {
   scrollbar-width: thin;
 }
 
+
 .hive-list::-webkit-scrollbar,
 .inspection-list::-webkit-scrollbar {
   width: 6px;

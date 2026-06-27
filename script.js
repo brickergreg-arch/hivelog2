@@ -1,5 +1,3 @@
-// Simple localStorage-backed model: hives -> boxes -> frames
-
 const STORAGE_KEY = "hivelog2-data";
 
 let state = {
@@ -23,7 +21,7 @@ function saveState() {
 }
 
 function createHive(name) {
-  const id = `hive-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const id = `hive-${Date.now()}`;
   const hive = { id, name, boxes: [] };
   state.hives.push(hive);
   state.currentHiveId = id;
@@ -35,7 +33,7 @@ function createHive(name) {
 function createBox(hiveId, boxName, frameCount) {
   const hive = state.hives.find(h => h.id === hiveId);
   if (!hive) return;
-  const id = `box-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const id = `box-${Date.now()}`;
   const frames = [];
   for (let i = 1; i <= frameCount; i++) {
     frames.push({
@@ -196,59 +194,4 @@ function renderFrameDetail() {
     return;
   }
   frameDetailEl.hidden = false;
-  frameDetailTitleEl.textContent = `Frame ${frame.index}`;
-
-  frameStatusSelect.value = frame.status || "";
-  frameNotesInput.value = frame.notes || "";
-  framePhotoInput.value = frame.photoUrl || "";
-
-  framePhotoPreview.innerHTML = "";
-  if (frame.photoUrl) {
-    const img = document.createElement("img");
-    img.src = frame.photoUrl;
-    framePhotoPreview.appendChild(img);
-  } else {
-    framePhotoPreview.textContent = "No photo";
-  }
-}
-
-// Events
-
-addHiveBtn.onclick = () => {
-  const name = prompt("Hive name:", `Hive ${state.hives.length + 1}`);
-  if (!name) return;
-  createHive(name);
-};
-
-addBoxBtn.onclick = () => {
-  const hive = getCurrentHive();
-  if (!hive) {
-    alert("Select or create a hive first.");
-    return;
-  }
-  const boxName = boxNameInput.value.trim();
-  const frameCount = parseInt(frameCountSelect.value, 10) || 10;
-  createBox(hive.id, boxName, frameCount);
-  boxNameInput.value = "";
-};
-
-closeFrameDetailBtn.onclick = () => {
-  state.currentFrameId = null;
-  saveState();
-  renderFrameDetail();
-};
-
-saveFrameBtn.onclick = () => {
-  const frame = getCurrentFrame();
-  if (!frame) return;
-  frame.status = frameStatusSelect.value;
-  frame.notes = frameNotesInput.value;
-  frame.photoUrl = framePhotoInput.value;
-  saveState();
-  renderFrames();
-  renderFrameDetail();
-};
-
-// Init
-loadState();
-render();
+  frame

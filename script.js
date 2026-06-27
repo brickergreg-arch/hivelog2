@@ -1,6 +1,5 @@
 const STORAGE_KEY = "hivelog-advanced";
 
-// App state
 let state = {
   hives: [],
   currentHiveId: null,
@@ -8,7 +7,6 @@ let state = {
   currentFrameId: null,
 };
 
-// Load/save
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -22,7 +20,6 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// Helpers
 function getCurrentHive() {
   return state.hives.find(h => h.id === state.currentHiveId) || null;
 }

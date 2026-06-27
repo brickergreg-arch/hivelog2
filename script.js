@@ -7,6 +7,7 @@ let state = {
   currentFrameIndex: null
 };
 
+
 // DOM refs
 const hiveListEl = document.getElementById("hiveList");
 const addHiveBtn = document.getElementById("addHiveBtn");

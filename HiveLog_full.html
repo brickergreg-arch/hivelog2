@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HiveLog</title>
+<style>
+body { font-family: Arial; background:#1a1208; color:#f5e6c8; padding:20px; }
+.frame { display:inline-block; padding:10px; margin:5px; background:#3a2812; cursor:pointer; }
+.selected { outline:2px solid gold; }
+.lock { margin-left:4px; cursor:pointer; }
+.toolbar { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); background:#2b1e0e; padding:10px; border:1px solid #444; }
+.modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; }
+.box { background:#2b1e0e; padding:20px; max-height:300px; overflow:auto; }
+</style>
+</head>
+<body>
+<h1>🐝 HiveLog</h1>
+<div id='frames'></div>
+<div id='toolbar' class='toolbar' style='display:none'>
+  <span id='count'></span>
+  <button onclick='batchRename()'>Rename</button>
+  <button onclick='clearSelection()'>Clear</button>
+</div>
+<div id='modal' class='modal' style='display:none'>
+  <div class='box'>
+    <h3>Preview</h3>
+    <div id='preview'></div>
+    <button onclick='confirmRename()'>Apply</button>
+    <button onclick='closeModal()'>Cancel</button>
+  </div>
+</div>
+<script>
+let frames=[];
+let selected=new Set();
+let pending=null;
+
+for(let i=1;i<=10;i++){
+  frames.push({id:i,name:"Frame-"+i,locked:false});
+}
+
+function render(){
+  const el=document.getElementById("frames");
+  el.innerHTML="";
+
+  frames.forEach(f=>{
+    const div=document.createElement("div");
+    div.className="frame "+(selected.has(f.id)?"selected":"");
+
+    if(f.editing){
+      const input=document.createElement("input");
+      input.value=f.name;
+      input.onblur=()=>{
+        if(input.value!==f.name){
+          if(confirm(`Rename ${f.name} → ${input.value}?`)){
+            f.name=input.value;
+            f.locked=true;
+          }
+        }
+        f.editing=false;
+        render();
+      };
+      div.appendChild(input);
+      setTimeout(()=>input.focus(),0);
+    } else {
+      const span=document.createElement("span");
+      span.textContent=f.name;
+
+      span.onclick=()=>{
+        if(selected.has(f.id)){
+          selected.delete(f.id);
+        } else {
+          selected.add(f.id);
+        }
+        render();
+      };
+
+      span.ondblclick=()=>{
+        f.editing=true;
+        render();
+      };
+
+      div.appendChild(span);
+
+      const lock=document.createElement("span");
+      lock.className="lock";
+      lock.textContent=f.locked?"🔒":"🔓";
+      lock.onclick=(e)=>{
+        e.stopPropagation();
+        f.locked=!f.locked;
+        render();
+      };
+
+      div.appendChild(lock);
+    }
+
+    el.appendChild(div);
+  });
+
+  const bar=document.getElementById("toolbar");
+  if(selected.size>0){
+    bar.style.display="block";
+    document.getElementById("count").textContent=selected.size+" selected";
+  } else {
+    bar.style.display="none";
+  }
+}
+
+function clearSelection(){
+  selected.clear();
+  render();
+}
+
+function batchRename(){
+  const prefix=prompt("Enter prefix:");
+  if(!prefix) return;
+
+  const targets=frames.filter(f=>selected.has(f.id)&&!f.locked);
+
+  if(targets.length===0){
+    alert("Nothing to rename (locked?)");
+    return;
+  }
+
+  pending = targets.map((f,i)=>({
+    frame:f,
+    old:f.name,
+    new:prefix+"-"+(i+1)
+  }));
+
+  const preview=document.getElementById("preview");
+  preview.innerHTML=pending.map(p=>`<div>${p.old} → ${p.new}</div>`).join("");
+
+  document.getElementById("modal").style.display="flex";
+}
+
+function confirmRename(){
+  pending.forEach(p=>{
+    p.frame.name=p.new;
+    p.frame.locked=true;
+  });
+
+  selected.clear();
+  pending=null;
+  closeModal();
+  render();
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+render();
+</script>
+</body>
+</html>

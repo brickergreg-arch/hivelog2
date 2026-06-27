@@ -1,52 +1,20 @@
-const STORAGE_KEY = "hivelog_advanced_v1";
+// Simple localStorage-backed model: hives -> boxes -> frames
+
+const STORAGE_KEY = "hivelog2-data";
 
 let state = {
   hives: [],
   currentHiveId: null,
   currentBoxId: null,
-  currentFrameIndex: null
+  currentFrameId: null,
 };
 
-
-// DOM refs
-const hiveListEl = document.getElementById("hiveList");
-const addHiveBtn = document.getElementById("addHiveBtn");
-const boxNameInput = document.getElementById("boxNameInput");
-const frameCountSelect = document.getElementById("frameCountSelect");
-const addBoxBtn = document.getElementById("addBoxBtn");
-
-const currentHiveTitleEl = document.getElementById("currentHiveTitle");
-const currentBoxTitleEl = document.getElementById("currentBoxTitle");
-
-const inspectionDateInput = document.getElementById("inspectionDateInput");
-const weatherInput = document.getElementById("weatherInput");
-const nectarInput = document.getElementById("nectarInput");
-const temperamentInput = document.getElementById("temperamentInput");
-const saveInspectionBtn = document.getElementById("saveInspectionBtn");
-
-const frameGridEl = document.getElementById("frameGrid");
-const frameDetailTitleEl = document.getElementById("frameDetailTitle");
-const statusTagsEl = document.getElementById("statusTags");
-const notesInputEl = document.getElementById("notesInput");
-const saveFrameBtn = document.getElementById("saveFrameBtn");
-const photoInputEl = document.getElementById("photoInput");
-const photoPreviewEl = document.getElementById("photoPreview");
-
-const inspectionListEl = document.getElementById("inspectionList");
-
-// Persistence
-
 function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    state = JSON.parse(raw);
-  } else {
-    state = {
-      hives: [],
-      currentHiveId: null,
-      currentBoxId: null,
-      currentFrameIndex: null
-    };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch (e) {
+    console.error("Failed to load state", e);
   }
 }
 
@@ -54,20 +22,12 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// Helpers
-
 function createHive(name) {
-  const id = `hive_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const hive = {
-    id,
-    name: name || `Hive ${state.hives.length + 1}`,
-    boxes: [],
-    inspections: []
-  };
+  const id = `hive-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const hive = { id, name, boxes: [] };
   state.hives.push(hive);
   state.currentHiveId = id;
   state.currentBoxId = null;
-  state.currentFrameIndex = null;
   saveState();
   render();
 }
@@ -75,21 +35,19 @@ function createHive(name) {
 function createBox(hiveId, boxName, frameCount) {
   const hive = state.hives.find(h => h.id === hiveId);
   if (!hive) return;
-  const id = `box_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const box = {
-    id,
-    name: boxName || `Box ${hive.boxes.length + 1}`,
-    frameCount: frameCount || 8,
-    frames: Array.from({ length: frameCount }, (_, i) => ({
+  const id = `box-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const frames = [];
+  for (let i = 1; i <= frameCount; i++) {
+    frames.push({
+      id: `frame-${i}`,
       index: i,
-      tags: [],
+      status: "",
       notes: "",
-      photoDataUrl: null
-    }))
-  };
-  hive.boxes.push(box);
+      photoUrl: "",
+    });
+  }
+  hive.boxes.push({ id, name: boxName || `Box ${hive.boxes.length + 1}`, frames });
   state.currentBoxId = id;
-  state.currentFrameIndex = 0;
   saveState();
   render();
 }
@@ -104,326 +62,193 @@ function getCurrentBox() {
   return hive.boxes.find(b => b.id === state.currentBoxId) || null;
 }
 
+function getCurrentFrame() {
+  const box = getCurrentBox();
+  if (!box) return null;
+  return box.frames.find(f => f.id === state.currentFrameId) || null;
+}
+
+// DOM refs
+const hiveListEl = document.getElementById("hiveList");
+const boxTabsEl = document.getElementById("boxTabs");
+const frameGridEl = document.getElementById("frameGrid");
+const currentHiveTitleEl = document.getElementById("currentHiveTitle");
+const currentBoxTitleEl = document.getElementById("currentBoxTitle");
+
+const addHiveBtn = document.getElementById("addHiveBtn");
+const addBoxBtn = document.getElementById("addBoxBtn");
+const boxNameInput = document.getElementById("boxNameInput");
+const frameCountSelect = document.getElementById("frameCountSelect");
+
+const frameDetailEl = document.getElementById("frameDetail");
+const frameDetailTitleEl = document.getElementById("frameDetailTitle");
+const closeFrameDetailBtn = document.getElementById("closeFrameDetailBtn");
+const frameStatusSelect = document.getElementById("frameStatusSelect");
+const frameNotesInput = document.getElementById("frameNotesInput");
+const framePhotoInput = document.getElementById("framePhotoInput");
+const framePhotoPreview = document.getElementById("framePhotoPreview");
+const saveFrameBtn = document.getElementById("saveFrameBtn");
+
 // Rendering
 
 function render() {
   renderHives();
-  renderMain();
+  renderBoxes();
+  renderFrames();
+  renderHeader();
+  renderFrameDetail();
 }
 
 function renderHives() {
   hiveListEl.innerHTML = "";
   state.hives.forEach(hive => {
-    const hiveItem = document.createElement("div");
-    hiveItem.className = "hive-item";
-    if (hive.id === state.currentHiveId) hiveItem.classList.add("active");
-
-    const header = document.createElement("div");
-    header.className = "hive-item-header";
-
-    const title = document.createElement("div");
-    title.className = "hive-item-title";
-    title.textContent = hive.name;
-
-    const count = document.createElement("div");
-    count.style.fontSize = "11px";
-    count.style.color = "#9ca3af";
-    count.textContent = `${hive.boxes.length} box${hive.boxes.length === 1 ? "" : "es"}`;
-
-    header.appendChild(title);
-    header.appendChild(count);
-
-    const boxList = document.createElement("div");
-    boxList.className = "hive-box-list";
-
-    hive.boxes.forEach(box => {
-      const pill = document.createElement("span");
-      pill.className = "box-pill";
-      if (box.id === state.currentBoxId && hive.id === state.currentHiveId) {
-        pill.classList.add("active");
-      }
-      pill.textContent = `${box.name} (${box.frameCount})`;
-      pill.addEventListener("click", e => {
-        e.stopPropagation();
-        state.currentHiveId = hive.id;
-        state.currentBoxId = box.id;
-        state.currentFrameIndex = 0;
-        saveState();
-        render();
-      });
-      boxList.appendChild(pill);
-    });
-
-    hiveItem.appendChild(header);
-    hiveItem.appendChild(boxList);
-
-    hiveItem.addEventListener("click", () => {
+    const div = document.createElement("div");
+    div.className = "hive-item" + (hive.id === state.currentHiveId ? " active" : "");
+    div.textContent = hive.name || "Unnamed hive";
+    div.onclick = () => {
       state.currentHiveId = hive.id;
-      if (!hive.boxes.length) {
-        state.currentBoxId = null;
-        state.currentFrameIndex = null;
-      } else {
-        state.currentBoxId = hive.boxes[0].id;
-        state.currentFrameIndex = 0;
-      }
+      const firstBox = hive.boxes[0];
+      state.currentBoxId = firstBox ? firstBox.id : null;
+      state.currentFrameId = null;
       saveState();
       render();
-    });
-
-    hiveListEl.appendChild(hiveItem);
+    };
+    hiveListEl.appendChild(div);
   });
 }
 
-function renderMain() {
+function renderBoxes() {
+  boxTabsEl.innerHTML = "";
   const hive = getCurrentHive();
-  const box = getCurrentBox();
-
-  if (!hive) {
-    currentHiveTitleEl.textContent = "No hive selected";
-    currentBoxTitleEl.textContent = "";
-    frameGridEl.innerHTML = "";
-    frameDetailTitleEl.textContent = "Select a frame";
-    notesInputEl.value = "";
-    renderPhotoPreview(null);
-    inspectionListEl.innerHTML = "";
-    return;
-  }
-
-  currentHiveTitleEl.textContent = hive.name;
-
-  if (!box) {
-    currentBoxTitleEl.textContent = "No box selected";
-    frameGridEl.innerHTML = "";
-    frameDetailTitleEl.textContent = "Select a frame";
-    notesInputEl.value = "";
-    renderPhotoPreview(null);
-  } else {
-    currentBoxTitleEl.textContent = `${box.name} – ${box.frameCount} frames`;
-    renderFrameGrid(box);
-    renderFrameDetail(box);
-  }
-
-  renderInspectionTimeline(hive);
+  if (!hive) return;
+  hive.boxes.forEach(box => {
+    const btn = document.createElement("button");
+    btn.className = "box-tab" + (box.id === state.currentBoxId ? " active" : "");
+    btn.textContent = box.name;
+    btn.onclick = () => {
+      state.currentBoxId = box.id;
+      state.currentFrameId = null;
+      saveState();
+      render();
+    };
+    boxTabsEl.appendChild(btn);
+  });
 }
 
-function renderFrameGrid(box) {
+function renderFrames() {
   frameGridEl.innerHTML = "";
+  const box = getCurrentBox();
+  if (!box) return;
   box.frames.forEach(frame => {
     const card = document.createElement("div");
     card.className = "frame-card";
-    if (frame.index === state.currentFrameIndex) card.classList.add("active");
-
-    const ring = document.createElement("div");
-    ring.className = "frame-ring";
-    if (frame.tags.includes("brood")) ring.classList.add("brood");
-    else if (frame.tags.includes("honey")) ring.classList.add("honey");
-    else if (frame.tags.includes("pollen")) ring.classList.add("pollen");
-
-    const info = document.createElement("div");
-    info.className = "frame-info";
-
-    const title = document.createElement("div");
-    title.className = "frame-info-title";
-    title.textContent = `Frame ${frame.index + 1}`;
-
-    const tags = document.createElement("div");
-    tags.className = "frame-info-tags";
-    tags.textContent = frame.tags.length
-      ? frame.tags.join(", ").replace(/_/g, " ")
-      : "No tags";
-
-    info.appendChild(title);
-    info.appendChild(tags);
-
-    card.appendChild(ring);
-    card.appendChild(info);
-
-    card.addEventListener("click", () => {
-      state.currentFrameIndex = frame.index;
+    card.onclick = () => {
+      state.currentFrameId = frame.id;
       saveState();
-      render();
-    });
+      renderFrameDetail();
+    };
+
+    const header = document.createElement("div");
+    header.className = "frame-card-header";
+
+    const label = document.createElement("span");
+    label.textContent = `Frame ${frame.index}`;
+
+    const status = document.createElement("span");
+    status.className = "frame-status-pill";
+    if (frame.status) {
+      status.textContent = frame.status;
+      if (frame.status === "brood") status.classList.add("frame-status-brood");
+      if (frame.status === "honey") status.classList.add("frame-status-honey");
+      if (frame.status === "mixed") status.classList.add("frame-status-mixed");
+      if (frame.status === "empty") status.classList.add("frame-status-empty");
+    } else {
+      status.textContent = "–";
+    }
+
+    header.appendChild(label);
+    header.appendChild(status);
+    card.appendChild(header);
+
+    if (frame.notes) {
+      const notes = document.createElement("div");
+      notes.textContent = frame.notes.slice(0, 40) + (frame.notes.length > 40 ? "…" : "");
+      notes.style.fontSize = "11px";
+      notes.style.color = "#9ca3af";
+      card.appendChild(notes);
+    }
 
     frameGridEl.appendChild(card);
   });
 }
 
-function renderFrameDetail(box) {
-  const frame = box.frames[state.currentFrameIndex];
+function renderHeader() {
+  const hive = getCurrentHive();
+  const box = getCurrentBox();
+  currentHiveTitleEl.textContent = hive ? hive.name : "No hive selected";
+  currentBoxTitleEl.textContent = box ? box.name : "";
+}
+
+function renderFrameDetail() {
+  const frame = getCurrentFrame();
   if (!frame) {
-    frameDetailTitleEl.textContent = "Select a frame";
-    notesInputEl.value = "";
-    renderPhotoPreview(null);
+    frameDetailEl.hidden = true;
     return;
   }
+  frameDetailEl.hidden = false;
+  frameDetailTitleEl.textContent = `Frame ${frame.index}`;
 
-  frameDetailTitleEl.textContent = `Frame ${frame.index + 1}`;
+  frameStatusSelect.value = frame.status || "";
+  frameNotesInput.value = frame.notes || "";
+  framePhotoInput.value = frame.photoUrl || "";
 
-  Array.from(statusTagsEl.querySelectorAll("button")).forEach(btn => {
-    const tag = btn.dataset.tag;
-    btn.classList.toggle("active", frame.tags.includes(tag));
-  });
-
-  notesInputEl.value = frame.notes || "";
-  renderPhotoPreview(frame.photoDataUrl);
-}
-
-function renderPhotoPreview(dataUrl) {
-  photoPreviewEl.innerHTML = "";
-  if (!dataUrl) {
-    const span = document.createElement("span");
-    span.className = "placeholder";
-    span.textContent = "No photo yet";
-    photoPreviewEl.appendChild(span);
-  } else {
+  framePhotoPreview.innerHTML = "";
+  if (frame.photoUrl) {
     const img = document.createElement("img");
-    img.src = dataUrl;
-    photoPreviewEl.appendChild(img);
+    img.src = frame.photoUrl;
+    framePhotoPreview.appendChild(img);
+  } else {
+    framePhotoPreview.textContent = "No photo";
   }
-}
-
-function renderInspectionTimeline(hive) {
-  inspectionListEl.innerHTML = "";
-  if (!hive.inspections || !hive.inspections.length) return;
-
-  hive.inspections
-    .slice()
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-    .forEach(ins => {
-      const item = document.createElement("div");
-      item.className = "inspection-item";
-
-      const header = document.createElement("div");
-      header.className = "inspection-item-header";
-
-      const date = document.createElement("div");
-      date.textContent = ins.date;
-
-      const meta = document.createElement("div");
-      meta.className = "inspection-item-meta";
-      meta.textContent = `${ins.weather || "–"} | ${ins.nectar || "–"} | ${ins.temperament || "–"}`;
-
-      header.appendChild(date);
-      header.appendChild(meta);
-
-      const body = document.createElement("div");
-      body.className = "inspection-item-body";
-      body.textContent = ins.summary || "";
-
-      item.appendChild(header);
-      item.appendChild(body);
-
-      inspectionListEl.appendChild(item);
-    });
 }
 
 // Events
 
-addHiveBtn.addEventListener("click", () => {
+addHiveBtn.onclick = () => {
   const name = prompt("Hive name:", `Hive ${state.hives.length + 1}`);
-  createHive(name || undefined);
-});
+  if (!name) return;
+  createHive(name);
+};
 
-addBoxBtn.addEventListener("click", () => {
+addBoxBtn.onclick = () => {
   const hive = getCurrentHive();
   if (!hive) {
     alert("Select or create a hive first.");
     return;
   }
   const boxName = boxNameInput.value.trim();
-  const frameCount = parseInt(frameCountSelect.value, 10) || 8;
+  const frameCount = parseInt(frameCountSelect.value, 10) || 10;
   createBox(hive.id, boxName, frameCount);
   boxNameInput.value = "";
-});
+};
 
-statusTagsEl.addEventListener("click", e => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
-  const tag = btn.dataset.tag;
-  const box = getCurrentBox();
-  if (!box) return;
-  const frame = box.frames[state.currentFrameIndex];
-  if (!frame) return;
-
-  if (frame.tags.includes(tag)) {
-    frame.tags = frame.tags.filter(t => t !== tag);
-  } else {
-    frame.tags.push(tag);
-  }
+closeFrameDetailBtn.onclick = () => {
+  state.currentFrameId = null;
   saveState();
-  render();
-});
+  renderFrameDetail();
+};
 
-photoInputEl.addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const box = getCurrentBox();
-  if (!box) return;
-  const frame = box.frames[state.currentFrameIndex];
+saveFrameBtn.onclick = () => {
+  const frame = getCurrentFrame();
   if (!frame) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    frame.photoDataUrl = reader.result;
-    saveState();
-    renderPhotoPreview(reader.result);
-    renderFrameGrid(box);
-  };
-  reader.readAsDataURL(file);
-});
-
-saveFrameBtn.addEventListener("click", () => {
-  const box = getCurrentBox();
-  if (!box) return;
-  const frame = box.frames[state.currentFrameIndex];
-  if (!frame) return;
-
-  frame.notes = notesInputEl.value;
+  frame.status = frameStatusSelect.value;
+  frame.notes = frameNotesInput.value;
+  frame.photoUrl = framePhotoInput.value;
   saveState();
-});
+  renderFrames();
+  renderFrameDetail();
+};
 
-saveInspectionBtn.addEventListener("click", () => {
-  const hive = getCurrentHive();
-  const box = getCurrentBox();
-  if (!hive || !box) {
-    alert("Select a hive and box before saving an inspection.");
-    return;
-  }
-
-  const date =
-    inspectionDateInput.value || new Date().toISOString().slice(0, 10);
-  const weather = weatherInput.value.trim();
-  const nectar = nectarInput.value.trim();
-  const temperament = temperamentInput.value.trim();
-
-  const changedFrames = box.frames
-    .filter(f => f.tags.length || (f.notes && f.notes.trim().length))
-    .map(f => `F${f.index + 1}: ${f.tags.join(", ").replace(/_/g, " ") || "notes"}`);
-
-  const summary =
-    changedFrames.length > 0
-      ? `Box ${box.name}: ${changedFrames.join(" | ")}`
-      : `Box ${box.name}: no notable changes`;
-
-  hive.inspections.push({
-    date,
-    weather,
-    nectar,
-    temperament,
-    summary
-  });
-
-  saveState();
-  renderInspectionTimeline(hive);
-});
-
-// Boot
-
+// Init
 loadState();
 render();
-
-// If no hives, create a starter one
-if (!state.hives.length) {
-  createHive("Hive 1");
-  createBox(state.currentHiveId, "Deep A", 8);
-}

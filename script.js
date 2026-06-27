@@ -194,4 +194,64 @@ function renderFrameDetail() {
     return;
   }
   frameDetailEl.hidden = false;
-  frame
+  frameDetailTitleEl.textContent = `Frame ${frame.index}`;
+
+  frameStatusSelect.value = frame.status || "";
+  frameNotesInput.value = frame.notes || "";
+  framePhotoInput.value = frame.photoUrl || "";
+
+  framePhotoPreview.innerHTML = "";
+  if (frame.photoUrl) {
+    const img = document.createElement("img");
+    img.src = frame.photoUrl;
+    framePhotoPreview.appendChild(img);
+  } else {
+    framePhotoPreview.textContent = "No photo";
+  }
+}
+
+// Events
+
+addHiveBtn.onclick = () => {
+  const name = prompt("Hive name:", `Hive ${state.hives.length + 1}`);
+  if (!name) return;
+  createHive(name);
+};
+
+addBoxBtn.onclick = () => {
+  const hive = getCurrentHive();
+  if (!hive) {
+    alert("Select or create a hive first.");
+    return;
+  }
+  const boxName = boxNameInput.value.trim();
+  const frameCount = parseInt(frameCountSelect.value, 10) || 10;
+  createBox(hive.id, boxName, frameCount);
+  boxNameInput.value = "";
+};
+
+closeFrameDetailBtn.onclick = () => {
+  state.currentFrameId = null;
+  saveState();
+  renderFrameDetail();
+};
+
+saveFrameBtn.onclick = () => {
+  const frame = getCurrentFrame();
+  if (!frame) return;
+  frame.status = frameStatusSelect.value;
+  frame.notes = frameNotesInput.value;
+  frame.photoUrl = framePhotoInput.value;
+  saveState();
+  renderFrames();
+  renderFrameDetail();
+};
+
+// Init: if empty, create a starter hive/box so nothing feels "locked"
+loadState();
+if (state.hives.length === 0) {
+  createHive("Hive 1");
+  const hive = getCurrentHive();
+  createBox(hive.id, "Deep A", 10);
+}
+render();

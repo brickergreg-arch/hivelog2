@@ -15,110 +15,69 @@ function initFrames() {
   frames = [];
 
   for (let i = 1; i <= FRAME_COUNT; i++) {
-    const frame = {
-      id: i,
-      notes: "",
-      photoTaken: false
-    };
+    const frame = { id: i, notes: "", photoTaken: false };
     frames.push(frame);
 
     const card = document.createElement("div");
     card.className = "frame-card";
 
-    const header = document.createElement("div");
-    header.className = "frame-header";
-
-    const idSpan = document.createElement("span");
-    idSpan.className = "frame-id";
-    idSpan.textContent = `Frame ${i}`;
+    const title = document.createElement("h3");
+    title.textContent = `Frame ${i}`;
 
     const photoBtn = document.createElement("button");
-    photoBtn.className = "photo-btn";
     photoBtn.textContent = "Mark Photo Taken";
     photoBtn.addEventListener("click", () => {
       frame.photoTaken = !frame.photoTaken;
-      photoStatus.textContent = frame.photoTaken ? "Photo: ✔" : "Photo: ✖";
+      status.textContent = frame.photoTaken ? "Photo: ✔" : "Photo: ✖";
     });
 
-    header.appendChild(idSpan);
-    header.appendChild(photoBtn);
-
-    const notesLabel = document.createElement("div");
-    notesLabel.className = "notes-label";
-    notesLabel.textContent = "Notes";
-
-    const notesArea = document.createElement("textarea");
-    notesArea.className = "frame-notes";
-    notesArea.addEventListener("input", () => {
-      frame.notes = notesArea.value;
+    const notes = document.createElement("textarea");
+    notes.placeholder = "Notes...";
+    notes.addEventListener("input", () => {
+      frame.notes = notes.value;
     });
 
-    const photoStatus = document.createElement("div");
-    photoStatus.className = "photo-status";
-    photoStatus.textContent = "Photo: ✖";
+    const status = document.createElement("div");
+    status.className = "photo-status";
+    status.textContent = "Photo: ✖";
 
-    card.appendChild(header);
-    card.appendChild(notesLabel);
-    card.appendChild(notesArea);
-    card.appendChild(photoStatus);
+    card.appendChild(title);
+    card.appendChild(photoBtn);
+    card.appendChild(notes);
+    card.appendChild(status);
 
     framesGrid.appendChild(card);
   }
 }
 
 function getKey() {
-  const hiveId = hiveIdInput.value.trim() || "default-hive";
-  const date = dateInput.value || "no-date";
-  return `hivelog:${hiveId}:${date}`;
+  return `hivelog:${hiveIdInput.value}:${dateInput.value}`;
 }
 
 function saveInspection() {
-  const key = getKey();
-  const payload = {
-    hiveId: hiveIdInput.value.trim(),
-    date: dateInput.value,
-    frames
-  };
-  localStorage.setItem(key, JSON.stringify(payload));
-  statusSpan.textContent = `Saved inspection for ${payload.hiveId || "default"} on ${payload.date || "no date"}.`;
+  localStorage.setItem(getKey(), JSON.stringify(frames));
+  statusSpan.textContent = "Saved.";
 }
 
 function loadInspection() {
-  const key = getKey();
-  const raw = localStorage.getItem(key);
+  const raw = localStorage.getItem(getKey());
   if (!raw) {
-    statusSpan.textContent = "No saved inspection for this hive/date.";
+    statusSpan.textContent = "No saved inspection.";
     return;
   }
-  const data = JSON.parse(raw);
-  statusSpan.textContent = `Loaded inspection for ${data.hiveId || "default"} on ${data.date || "no date"}.`;
-
+  const saved = JSON.parse(raw);
   initFrames();
-  data.frames.forEach((savedFrame, idx) => {
-    if (!frames[idx]) return;
-    frames[idx].notes = savedFrame.notes;
-    frames[idx].photoTaken = savedFrame.photoTaken;
-
-    const card = framesGrid.children[idx];
-    const notesArea = card.querySelector(".frame-notes");
-    const photoStatus = card.querySelector(".photo-status");
-
-    notesArea.value = savedFrame.notes || "";
-    photoStatus.textContent = savedFrame.photoTaken ? "Photo: ✔" : "Photo: ✖";
+  saved.forEach((f, i) => {
+    frames[i] = f;
+    const card = framesGrid.children[i];
+    card.querySelector("textarea").value = f.notes;
+    card.querySelector(".photo-status").textContent = f.photoTaken ? "Photo: ✔" : "Photo: ✖";
   });
+  statusSpan.textContent = "Loaded.";
 }
 
-function newInspection() {
-  initFrames();
-  statusSpan.textContent = "New inspection started.";
-}
-
-saveBtn.addEventListener("click", saveInspection);
-newInspectionBtn.addEventListener("click", newInspection);
+newInspectionBtn.addEventListener("click", initFrames);
 loadInspectionBtn.addEventListener("click", loadInspection);
+saveBtn.addEventListener("click", saveInspection);
 
-window.addEventListener("load", () => {
-  initFrames();
-  const today = new Date().toISOString().slice(0, 10);
-  dateInput.value = today;
-});
+window.onload = initFrames;

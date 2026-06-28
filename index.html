@@ -2,93 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>HiveLog – Advanced Frame Tracker</title>
-  <link rel="stylesheet" href="main.css?v=1" />
-
-
+  <title>HiveLog</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <header class="sidebar-header">
-        <h1>HiveLog</h1>
-        <button id="addHiveBtn">+ Hive</button>
-      </header>
+  <header>
+    <h1>HiveLog</h1>
+    <div class="controls">
+      <label>
+        Hive:
+        <input type="text" id="hiveId" placeholder="Hive A" />
+      </label>
+      <label>
+        Date:
+        <input type="date" id="inspectionDate" />
+      </label>
+      <button id="newInspectionBtn">New Inspection</button>
+      <button id="loadInspectionBtn">Load Inspection</button>
+    </div>
+  </header>
 
-      <section class="hive-list" id="hiveList"></section>
+  <main>
+    <section id="framesSection">
+      <h2>Frames</h2>
+      <div id="framesGrid"></div>
+    </section>
+  </main>
 
-      <section class="box-config">
-        <h2>Box config</h2>
-        <label>
-          Box name:
-          <input id="boxNameInput" type="text" placeholder="Deep A" />
-        </label>
-        <label>
-          Frame count:
-          <select id="frameCountSelect">
-            <option value="8">8</option>
-            <option value="10" selected>10</option>
-            <option value="12">12</option>
-          </select>
-        </label>
-        <button id="addBoxBtn">+ Box</button>
-      </section>
-    </aside>
+  <footer>
+    <button id="saveBtn">Save Inspection</button>
+    <span id="status"></span>
+  </footer>
 
-    <!-- MAIN -->
-    <main class="main">
-      <header class="main-header">
-        <div>
-          <h2 id="currentHiveTitle">No hive selected</h2>
-          <p id="currentBoxTitle"></p>
-        </div>
-      </header>
-
-      <!-- BROWSER-STYLE TABS -->
-      <section class="box-tabs" id="boxTabs"></section>
-
-      <!-- FRAME GRID -->
-      <section class="frame-grid" id="frameGrid"></section>
-    </main>
-
-    <!-- FRAME DETAIL DRAWER -->
-    <aside class="frame-detail" id="frameDetail" hidden>
-      <header class="frame-detail-header">
-        <h2 id="frameDetailTitle">Frame</h2>
-        <button id="closeFrameDetailBtn">×</button>
-      </header>
-
-      <section class="frame-detail-body">
-        <label>
-          Status:
-          <select id="frameStatusSelect">
-            <option value="">–</option>
-            <option value="brood">Brood</option>
-            <option value="honey">Honey</option>
-            <option value="mixed">Mixed</option>
-            <option value="empty">Empty</option>
-          </select>
-        </label>
-
-        <label>
-          Notes:
-          <textarea id="frameNotesInput" rows="5" placeholder="Inspection notes..."></textarea>
-        </label>
-
-        <label>
-          Photo URL:
-          <input id="framePhotoInput" type="url" placeholder="https://…" />
-        </label>
-
-        <div class="frame-photo-preview" id="framePhotoPreview">No photo</div>
-
-        <button id="saveFrameBtn">Save frame</button>
-      </section>
-    </aside>
-  </div>
-
-  <script src="app.js?v=1"></script>
-
+  <script src="app.js"></script>
 </body>
 </html>

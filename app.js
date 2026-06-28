@@ -1,246 +1,131 @@
-const STORAGE_KEY = "hivelog-advanced";
-
-let state = {
-  hives: [],
-  currentHiveId: null,
-  currentBoxId: null,
-  currentFrameId: null,
-};
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state = JSON.parse(raw);
-  } catch (e) {
-    console.error("Failed to load state", e);
-  }
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+body {
+  margin: 0;
+  background: #f5f5f5;
+  color: #222;
 }
 
-function getCurrentHive() {
-  return state.hives.find(h => h.id === state.currentHiveId) || null;
+header {
+  background: #ffd54f;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid #e0b200;
 }
 
-function getCurrentBox() {
-  const hive = getCurrentHive();
-  if (!hive) return null;
-  return hive.boxes.find(b => b.id === state.currentBoxId) || null;
+header h1 {
+  margin: 0;
+  font-size: 1.6rem;
 }
 
-function getCurrentFrame() {
-  const box = getCurrentBox();
-  if (!box) return null;
-  return box.frames.find(f => f.id === state.currentFrameId) || null;
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
-// DOM refs
-const hiveListEl = document.getElementById("hiveList");
-const boxTabsEl = document.getElementById("boxTabs");
-const frameGridEl = document.getElementById("frameGrid");
-const currentHiveTitleEl = document.getElementById("currentHiveTitle");
-const currentBoxTitleEl = document.getElementById("currentBoxTitle");
-
-const addHiveBtn = document.getElementById("addHiveBtn");
-const addBoxBtn = document.getElementById("addBoxBtn");
-const boxNameInput = document.getElementById("boxNameInput");
-const frameCountSelect = document.getElementById("frameCountSelect");
-
-const frameDetailEl = document.getElementById("frameDetail");
-const frameDetailTitleEl = document.getElementById("frameDetailTitle");
-const closeFrameDetailBtn = document.getElementById("closeFrameDetailBtn");
-const frameStatusSelect = document.getElementById("frameStatusSelect");
-const frameNotesInput = document.getElementById("frameNotesInput");
-const framePhotoInput = document.getElementById("framePhotoInput");
-const framePhotoPreview = document.getElementById("framePhotoPreview");
-const saveFrameBtn = document.getElementById("saveFrameBtn");
-
-// Create hive
-function createHive(name) {
-  const id = `hive-${Date.now()}`;
-  state.hives.push({ id, name, boxes: [] });
-  state.currentHiveId = id;
-  state.currentBoxId = null;
-  saveState();
-  render();
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-// Create box
-function createBox(hiveId, boxName, frameCount) {
-  const hive = state.hives.find(h => h.id === hiveId);
-  if (!hive) return;
-
-  const id = `box-${Date.now()}`;
-  const frames = [];
-
-  for (let i = 1; i <= frameCount; i++) {
-    frames.push({
-      id: `frame-${i}`,
-      index: i,
-      status: "",
-      notes: "",
-      photoUrl: "",
-    });
-  }
-
-  hive.boxes.push({
-    id,
-    name: boxName || `Box ${hive.boxes.length + 1}`,
-    frames,
-  });
-
-  state.currentBoxId = id;
-  saveState();
-  render();
+main {
+  padding: 16px;
 }
 
-// Rendering
-function render() {
-  renderHives();
-  renderBoxes();
-  renderFrames();
-  renderHeader();
-  renderFrameDetail();
+#framesSection h2 {
+  margin-top: 0;
 }
 
-function renderHives() {
-  hiveListEl.innerHTML = "";
-  state.hives.forEach(hive => {
-    const div = document.createElement("div");
-    div.className = "hive-item" + (hive.id === state.currentHiveId ? " active" : "");
-    div.textContent = hive.name;
-    div.onclick = () => {
-      state.currentHiveId = hive.id;
-      state.currentBoxId = hive.boxes[0]?.id || null;
-      state.currentFrameId = null;
-      saveState();
-      render();
-    };
-    hiveListEl.appendChild(div);
-  });
+#framesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
 }
 
-function renderBoxes() {
-  boxTabsEl.innerHTML = "";
-  const hive = getCurrentHive();
-  if (!hive) return;
-
-  hive.boxes.forEach(box => {
-    const btn = document.createElement("button");
-    btn.className = "box-tab" + (box.id === state.currentBoxId ? " active" : "");
-    btn.textContent = box.name;
-    btn.onclick = () => {
-      state.currentBoxId = box.id;
-      state.currentFrameId = null;
-      saveState();
-      render();
-    };
-    boxTabsEl.appendChild(btn);
-  });
+.frame-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-function renderFrames() {
-  frameGridEl.innerHTML = "";
-  const box = getCurrentBox();
-  if (!box) return;
-
-  box.frames.forEach(frame => {
-    const card = document.createElement("div");
-    card.className = "frame-card";
-    card.onclick = () => {
-      state.currentFrameId = frame.id;
-      saveState();
-      renderFrameDetail();
-    };
-
-    const title = document.createElement("h3");
-    title.textContent = `Frame ${frame.index}`;
-    card.appendChild(title);
-
-    if (frame.status) {
-      const status = document.createElement("div");
-      status.textContent = frame.status;
-      status.style.fontSize = "12px";
-      status.style.opacity = "0.8";
-      card.appendChild(status);
-    }
-
-    if (frame.notes) {
-      const notes = document.createElement("div");
-      notes.textContent = frame.notes.slice(0, 40) + (frame.notes.length > 40 ? "…" : "");
-      notes.style.fontSize = "11px";
-      notes.style.opacity = "0.7";
-      card.appendChild(notes);
-    }
-
-    frameGridEl.appendChild(card);
-  });
+.frame-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-function renderHeader() {
-  const hive = getCurrentHive();
-  const box = getCurrentBox();
-  currentHiveTitleEl.textContent = hive ? hive.name : "No hive selected";
-  currentBoxTitleEl.textContent = box ? box.name : "";
+.frame-id {
+  font-weight: 600;
 }
 
-function renderFrameDetail() {
-  const frame = getCurrentFrame();
-  if (!frame) {
-    frameDetailEl.hidden = true;
-    return;
-  }
-
-  frameDetailEl.hidden = false;
-  frameDetailTitleEl.textContent = `Frame ${frame.index}`;
-
-  frameStatusSelect.value = frame.status || "";
-  frameNotesInput.value = frame.notes || "";
-  framePhotoInput.value = frame.photoUrl || "";
-
-  framePhotoPreview.innerHTML = frame.photoUrl
-    ? `<img src="${frame.photoUrl}" />`
-    : "No photo";
+.photo-btn {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ffa000;
+  background: #ffecb3;
+  cursor: pointer;
 }
 
-// Events
-addHiveBtn.onclick = () => {
-  const name = prompt("Hive name:", `Hive ${state.hives.length + 1}`);
-  if (name) createHive(name);
-};
+.photo-btn:hover {
+  background: #ffe082;
+}
 
-addBoxBtn.onclick = () => {
-  const hive = getCurrentHive();
-  if (!hive) return alert("Select or create a hive first.");
+.notes-label {
+  font-size: 0.8rem;
+  color: #555;
+}
 
-  const boxName = boxNameInput.value.trim();
-  const frameCount = parseInt(frameCountSelect.value, 10) || 10;
+.frame-notes {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+}
 
-  createBox(hive.id, boxName, frameCount);
-  boxNameInput.value = "";
-};
+.photo-status {
+  font-size: 0.75rem;
+  color: #777;
+}
 
-closeFrameDetailBtn.onclick = () => {
-  state.currentFrameId = null;
-  saveState();
-  renderFrameDetail();
-};
+footer {
+  border-top: 1px solid #ddd;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+}
 
-saveFrameBtn.onclick = () => {
-  const frame = getCurrentFrame();
-  if (!frame) return;
+#saveBtn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #2e7d32;
+  background: #4caf50;
+  color: #fff;
+  cursor: pointer;
+}
 
-  frame.status = frameStatusSelect.value;
-  frame.notes = frameNotesInput.value;
-  frame.photoUrl = framePhotoInput.value;
+#saveBtn:hover {
+  background: #43a047;
+}
 
-  saveState();
-  renderFrames();
-  renderFrameDetail();
-};
-
-// Init
-loadState();
-render();
+#status {
+  font-size: 0.8rem;
+  color: #555;
+}

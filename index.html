@@ -6,27 +6,19 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
+  <header class="topbar">
     <h1>HiveLog</h1>
-    <div class="controls">
-      <label>
-        Hive:
-        <input type="text" id="hiveId" placeholder="Hive A" />
-      </label>
-      <label>
-        Date:
-        <input type="date" id="inspectionDate" />
-      </label>
+    <div class="inputs">
+      <label>Hive <input id="hiveId" placeholder="Hive A"></label>
+      <label>Date <input type="date" id="inspectionDate"></label>
       <button id="newInspectionBtn">New Inspection</button>
-      <button id="loadInspectionBtn">Load Inspection</button>
+      <button id="loadInspectionBtn" class="secondary">Load Inspection</button>
     </div>
   </header>
 
   <main>
-    <section id="framesSection">
-      <h2>Frames</h2>
-      <div id="framesGrid"></div>
-    </section>
+    <h2>Frames</h2>
+    <div id="framesGrid"></div>
   </main>
 
   <footer>

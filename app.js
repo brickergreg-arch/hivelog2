@@ -1,131 +1,124 @@
-* {
-  box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+const FRAME_COUNT = 10;
+
+const hiveIdInput = document.getElementById("hiveId");
+const dateInput = document.getElementById("inspectionDate");
+const framesGrid = document.getElementById("framesGrid");
+const saveBtn = document.getElementById("saveBtn");
+const statusSpan = document.getElementById("status");
+const newInspectionBtn = document.getElementById("newInspectionBtn");
+const loadInspectionBtn = document.getElementById("loadInspectionBtn");
+
+let frames = [];
+
+function initFrames() {
+  framesGrid.innerHTML = "";
+  frames = [];
+
+  for (let i = 1; i <= FRAME_COUNT; i++) {
+    const frame = {
+      id: i,
+      notes: "",
+      photoTaken: false
+    };
+    frames.push(frame);
+
+    const card = document.createElement("div");
+    card.className = "frame-card";
+
+    const header = document.createElement("div");
+    header.className = "frame-header";
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "frame-id";
+    idSpan.textContent = `Frame ${i}`;
+
+    const photoBtn = document.createElement("button");
+    photoBtn.className = "photo-btn";
+    photoBtn.textContent = "Mark Photo Taken";
+    photoBtn.addEventListener("click", () => {
+      frame.photoTaken = !frame.photoTaken;
+      photoStatus.textContent = frame.photoTaken ? "Photo: ✔" : "Photo: ✖";
+    });
+
+    header.appendChild(idSpan);
+    header.appendChild(photoBtn);
+
+    const notesLabel = document.createElement("div");
+    notesLabel.className = "notes-label";
+    notesLabel.textContent = "Notes";
+
+    const notesArea = document.createElement("textarea");
+    notesArea.className = "frame-notes";
+    notesArea.addEventListener("input", () => {
+      frame.notes = notesArea.value;
+    });
+
+    const photoStatus = document.createElement("div");
+    photoStatus.className = "photo-status";
+    photoStatus.textContent = "Photo: ✖";
+
+    card.appendChild(header);
+    card.appendChild(notesLabel);
+    card.appendChild(notesArea);
+    card.appendChild(photoStatus);
+
+    framesGrid.appendChild(card);
+  }
 }
 
-body {
-  margin: 0;
-  background: #f5f5f5;
-  color: #222;
+function getKey() {
+  const hiveId = hiveIdInput.value.trim() || "default-hive";
+  const date = dateInput.value || "no-date";
+  return `hivelog:${hiveId}:${date}`;
 }
 
-header {
-  background: #ffd54f;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-bottom: 1px solid #e0b200;
+function saveInspection() {
+  const key = getKey();
+  const payload = {
+    hiveId: hiveIdInput.value.trim(),
+    date: dateInput.value,
+    frames
+  };
+  localStorage.setItem(key, JSON.stringify(payload));
+  statusSpan.textContent = `Saved inspection for ${payload.hiveId || "default"} on ${payload.date || "no date"}.`;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 1.6rem;
+function loadInspection() {
+  const key = getKey();
+  const raw = localStorage.getItem(key);
+  if (!raw) {
+    statusSpan.textContent = "No saved inspection for this hive/date.";
+    return;
+  }
+  const data = JSON.parse(raw);
+  statusSpan.textContent = `Loaded inspection for ${data.hiveId || "default"} on ${data.date || "no date"}.`;
+
+  initFrames();
+  data.frames.forEach((savedFrame, idx) => {
+    if (!frames[idx]) return;
+    frames[idx].notes = savedFrame.notes;
+    frames[idx].photoTaken = savedFrame.photoTaken;
+
+    const card = framesGrid.children[idx];
+    const notesArea = card.querySelector(".frame-notes");
+    const photoStatus = card.querySelector(".photo-status");
+
+    notesArea.value = savedFrame.notes || "";
+    photoStatus.textContent = savedFrame.photoTaken ? "Photo: ✔" : "Photo: ✖";
+  });
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+function newInspection() {
+  initFrames();
+  statusSpan.textContent = "New inspection started.";
 }
 
-.controls label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+saveBtn.addEventListener("click", saveInspection);
+newInspectionBtn.addEventListener("click", newInspection);
+loadInspectionBtn.addEventListener("click", loadInspection);
 
-main {
-  padding: 16px;
-}
-
-#framesSection h2 {
-  margin-top: 0;
-}
-
-#framesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.frame-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.frame-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.frame-id {
-  font-weight: 600;
-}
-
-.photo-btn {
-  font-size: 0.8rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #ffa000;
-  background: #ffecb3;
-  cursor: pointer;
-}
-
-.photo-btn:hover {
-  background: #ffe082;
-}
-
-.notes-label {
-  font-size: 0.8rem;
-  color: #555;
-}
-
-.frame-notes {
-  width: 100%;
-  min-height: 60px;
-  resize: vertical;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 0.85rem;
-}
-
-.photo-status {
-  font-size: 0.75rem;
-  color: #777;
-}
-
-footer {
-  border-top: 1px solid #ddd;
-  padding: 10px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fafafa;
-}
-
-#saveBtn {
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid #2e7d32;
-  background: #4caf50;
-  color: #fff;
-  cursor: pointer;
-}
-
-#saveBtn:hover {
-  background: #43a047;
-}
-
-#status {
-  font-size: 0.8rem;
-  color: #555;
-}
+window.addEventListener("load", () => {
+  initFrames();
+  const today = new Date().toISOString().slice(0, 10);
+  dateInput.value = today;
+});

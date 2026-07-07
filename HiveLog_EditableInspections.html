@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Bee Hive Inspection Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: { DEFAULT: '#1a1208', card: '#2b1e0e', secondary: '#3a2812', hover: '#4a3a28' },
+            accent: { DEFAULT: '#d4891a', light: '#f0b429', dark: '#b07316' },
+            txt: { DEFAULT: '#f5e6c8', secondary: '#c4a882', muted: '#8a7a64' },
+            success: '#4a9e5c',
+            warning: '#d4891a',
+            danger: '#c0392b',
+            brood: '#c0392b',
+            honey: '#f0b429',
+            pollen: '#7eb05a',
+            empty: '#4a3a28',
+            uninspected: '#3a3a3a'
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          borderRadius: { card: '10px', input: '6px' }
+        }
+      }
+    };
+    </script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: #1a1208; color: #f5e6c8; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #2b1e0e; }
+      ::-webkit-scrollbar-thumb { background: #4a3a28; border-radius: 3px; }
+      .honeycomb-bg {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66ZM28 100L0 84L0 50L28 34L56 50L56 84L28 100Z' fill='none' stroke='%23d4891a' stroke-width='0.5' opacity='0.06'/%3E%3C/svg%3E");
+      }
+      .box-wooden {
+        background: linear-gradient(180deg, #4a3a28 0%, #3a2812 40%, #2b1e0e 100%);
+        border: 2px solid #5a4a32;
+        border-radius: 6px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.4);
+      }
+      .box-wooden::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+        border-radius: 6px 6px 0 0;
+      }
+      .frame-slot {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+      }
+      .frame-slot:hover { transform: scaleY(1.15); filter: brightness(1.2); }
+      .frame-slot.active { outline: 2px solid #f0b429; outline-offset: 1px; }
+      .tab-btn { transition: all 0.2s ease; }
+      .tab-btn.active { color: #f0b429; border-bottom: 2px solid #f0b429; }
+      .condition-pill {
+        display: inline-flex; align-items: center; padding: 2px 10px;
+        border-radius: 12px; font-size: 11px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
+      }
+      .condition-excellent { background: rgba(74,158,92,0.2); color: #4a9e5c; }
+      .condition-good { background: rgba(74,158,140,0.2); color: #4a9e8c; }
+      .condition-fair { background: rgba(240,180,41,0.2); color: #f0b429; }
+      .condition-needs-attention { background: rgba(212,137,26,0.2); color: #d4891a; }
+      .condition-critical { background: rgba(192,57,43,0.2); color: #c0392b; }
+      .fade-in { animation: fadeIn 0.25s ease; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      .sidebar-hive { transition: all 0.15s ease; cursor: pointer; }
+      .sidebar-hive:hover { background: #3a2812; }
+      .sidebar-hive.active { background: #3a2812; border-left: 3px solid #f0b429; }
+      .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 100; display: flex; align-items: center; justify-content: center; }
+      .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 90; display: flex; align-items: center; justify-content: center; }
+      input[type="date"], input[type="text"], select, textarea {
+        background: #1a1208; border: 1px solid #4a3a28; color: #f5e6c8;
+        border-radius: 6px; padding: 8px 12px; font-family: inherit; font-size: 14px;
+        transition: border-color 0.2s;
+      }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: #d4891a; }
+      .btn-primary {
+        background: #d4891a; color: #1a1208; font-weight: 600;
+        border: none; border-radius: 6px; padding: 8px 18px; cursor: pointer;
+        transition: all 0.2s; font-family: inherit;
+      }
+      .btn-primary:hover { background: #f0b429; }
+      .btn-secondary {
+        background: #3a2812; color: #f5e6c8; font-weight: 500;
+        border: 1px solid #4a3a28; border-radius: 6px; padding: 8px 18px; cursor: pointer;
+        transition: all 0.2s; font-family: inherit;
+      }
+      .btn-secondary:hover { background: #4a3a28; }
+      .btn-danger {
+        background: rgba(192,57,43,0.15); color: #c0392b; font-weight: 500;
+        border: 1px solid rgba(192,57,43,0.3); border-radius: 6px; padding: 8px 18px; cursor: pointer;
+        transition: all 0.2s; font-family: inherit;
+      }
+      .btn-danger:hover { background: rgba(192,57,43,0.3); }
+      .toggle-btn {
+        width: 44px; height: 24px; border-radius: 12px;
+        background: #4a3a28; border: none; cursor: pointer;
+        position: relative; transition: background 0.2s;
+      }
+      .toggle-btn.active { background: #4a9e5c; }
+      .toggle-btn::after {
+        content: ''; position: absolute; top: 2px; left: 2px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #f5e6c8; transition: transform 0.2s;
+      }
+      .toggle-btn.active::after { transform: translateX(20px); }
+      .stat-card {
+        background: #2b1e0e; border-radius: 10px; padding: 16px 20px;
+        border: 1px solid rgba(74,58,40,0.5);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      /* Toast notification system */
+      .toast-container {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .toast {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+        animation: toastIn 0.35s cubic-bezier(0.21,1.02,0.73,1) forwards;
+        max-width: 420px;
+        white-space: nowrap;
+      }
+      .toast.toast-out {
+        animation: toastOut 0.3s ease forwards;
+      }
+      .toast-success {
+        background: linear-gradient(135deg, #d4891a, #b07316);
+        color: #fff;
+      }
+      .toast-error {
+        background: linear-gradient(135deg, #c0392b, #962d22);
+        color: #fff;
+      }
+      .toast-info {
+        background: linear-gradient(135deg, #3a6b8c, #2a5070);
+        color: #fff;
+      }
+      @keyframes toastIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes toastOut {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to { opacity: 0; transform: translateY(12px) scale(0.95); }
+      }
+      /* Export/Import button styles */
+      .btn-export {
+        background: rgba(212,137,26,0.15);
+        color: #f0b429;
+        font-weight: 600;
+        border: 1px solid rgba(212,137,26,0.35);
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .btn-export:hover { background: rgba(212,137,26,0.3); border-color: rgba(212,137,26,0.55); }
+      .btn-import {
+        background: rgba(74,58,40,0.3);
+        color: #c4a882;
+        font-weight: 600;
+        border: 1px solid rgba(74,58,40,0.6);
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .btn-import:hover { background: rgba(74,58,40,0.55); border-color: rgba(74,58,40,0.85); color: #f5e6c8; }
+
+      /* URL Banner */
+      #url-banner-top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background: #f0b429;
+        color: #1a1208;
+        padding: 14px 20px 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+      #url-banner-top .url-box {
+        background: #ffffff;
+        color: #1a1208;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 10px 14px;
+        border-radius: 8px;
+        word-break: break-all;
+        user-select: all;
+        -webkit-user-select: all;
+        line-height: 1.4;
+        border: 2px solid #b07316;
+      }
+      body.url-banner-visible header#header-bar-h7k2 {
+        top: var(--url-banner-height, 160px);
+      }
+    
+      #url-banner-top { display:none !important; }
+
+      .frame-name-label { font-size: 9px; line-height: 1; opacity: .95; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .box-frame-count-select { width: auto; min-width: 82px; padding: 4px 6px; font-size: 11px; }
+
+      .hive-inspection-card { background: rgba(26,18,8,0.65); border: 1px solid rgba(74,58,40,0.6); border-radius: 8px; }
+      .hive-edit-hint { cursor: pointer; }
+      .hive-edit-hint:hover { text-decoration: underline; }
+
+      .history-detail-row { background: rgba(26,18,8,0.75); }
+      .history-main-row { cursor: pointer; }
+
+      .nested-frame-detail { background: rgba(58,40,18,0.45); border: 1px solid rgba(74,58,40,0.5); border-radius: 8px; }
+      .active-inspection-pill { background: rgba(212,137,26,0.18); color: #f0b429; border: 1px solid rgba(212,137,26,0.35); border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body data-id="0" class="honeycomb-bg">
+    <app-icon data-id="1" hidden data-icon="bug" data-palette="Yellow"></app-icon>
+
+    <!-- URL BANNER -->
+    <div data-id="2" id="url-banner-top">
+        <div data-id="3" style="max-width:1440px;margin:0 auto;position:relative;">
+            <button data-id="4" id="url-banner-close-btn" style="position:absolute;top:0;right:0;background:none;border:none;cursor:pointer;color:#1a1208;font-size:22px;font-weight:bold;line-height:1;padding:4px 8px;" title="Close banner">✕</button>
+            <div data-id="5" style="font-size:18px;font-weight:800;margin-bottom:8px;">📋 Your HiveLog URL:</div>
+            <div data-id="6" class="url-box" id="url-display"></div>
+            <div data-id="7" style="font-size:13px;margin-top:8px;opacity:0.8;font-weight:500;">Write down or screenshot this URL to create shortcuts on your phone or desktop.</div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div data-id="8" id="toast-container-t1a1" class="toast-container"></div>
+
+    <!-- HIDDEN FILE INPUT FOR IMPORT -->
+    <input data-id="9" type="file" id="import-file-input-i1b2" accept=".json" class="hidden" />
+
+    <!-- HEADER -->
+    <header data-id="10" id="header-bar-h7k2" class="sticky top-0 z-50 bg-bg/95 backdrop-blur border-b border-bg-hover/50">
+        <div data-id="11" class="max-w-[1440px] mx-auto px-4 md:px-6 flex items-center justify-between h-14">
+            <div data-id="12" class="flex items-center gap-2">
+                <span data-id="13" class="text-2xl">🐝</span>
+                <span data-id="14" class="text-xl md:text-2xl font-extrabold text-accent-light tracking-tight">HiveLog</span>
+            </div>
+            <nav data-id="15" class="hidden md:flex items-center gap-1">
+                <button data-id="16" class="tab-btn active px-4 py-3 text-sm font-semibold text-txt-secondary" data-tab="dashboard">My Hives</button>
+                <button data-id="17" class="tab-btn px-4 py-3 text-sm font-semibold text-txt-secondary" data-tab="inspect">Inspect</button>
+                <button data-id="18" class="tab-btn px-4 py-3 text-sm font-semibold text-txt-secondary" data-tab="history">History</button>
+            </nav>
+            <div data-id="19" class="flex items-center gap-2">
+                <button data-id="20" id="export-data-btn-e1c3" class="btn-export hidden sm:inline-flex" title="Export all data">
+                    <i data-id="21" data-lucide="download" class="w-3.5 h-3.5"></i> <span data-id="22">Export</span>
+                </button>
+                <button data-id="23" id="import-data-btn-i2d4" class="btn-import hidden sm:inline-flex" title="Import data from backup">
+                    <i data-id="24" data-lucide="upload" class="w-3.5 h-3.5"></i> <span data-id="25">Import</span>
+                </button>
+                <button data-id="26" id="add-hive-btn-top-x9f1" class="btn-primary text-xs flex items-center gap-1 px-3 py-2">
+                    <i data-id="27" data-lucide="plus" class="w-4 h-4"></i> <span data-id="28" class="hidden sm:inline">Add Hive</span>
+                </button>
+                <button data-id="29" id="mobile-menu-btn-m3k8" class="md:hidden p-2 text-txt-secondary">
+                    <i data-id="30" data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MOBILE MENU -->
+    <nav data-id="31" id="mobile-menu-n4j2" class="hidden fixed inset-0 bg-bg z-[60] flex flex-col p-6">
+        <div data-id="32" class="flex items-center justify-between mb-8">
+            <div data-id="33" class="flex items-center gap-2">
+                <span data-id="34" class="text-2xl">🐝</span>
+                <span data-id="35" class="text-xl font-extrabold text-accent-light">HiveLog</span>
+            </div>
+            <button data-id="36" id="mobile-menu-close-c2q9" class="p-2 text-txt-secondary">
+                <i data-id="37" data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <button data-id="38" class="mobile-tab-btn text-left px-4 py-4 text-lg font-semibold text-txt border-b border-bg-hover" data-tab="dashboard">🏠 My Hives</button>
+        <button data-id="39" class="mobile-tab-btn text-left px-4 py-4 text-lg font-semibold text-txt border-b border-bg-hover" data-tab="inspect">🔍 Inspect</button>
+        <button data-id="40" class="mobile-tab-btn text-left px-4 py-4 text-lg font-semibold text-txt border-b border-bg-hover" data-tab="history">📋 History</button>
+        <div data-id="41" class="mt-4 flex flex-col gap-2">
+            <div data-id="42" class="flex gap-2">
+                <button data-id="43" id="export-data-btn-mobile-e3f5" class="btn-export flex-1 justify-center py-3">
+                    <i data-id="44" data-lucide="download" class="w-4 h-4"></i> <span data-id="45">Export Data</span>
+                </button>
+                <button data-id="46" id="import-data-btn-mobile-i4g6" class="btn-import flex-1 justify-center py-3">
+                    <i data-id="47" data-lucide="upload" class="w-4 h-4"></i> <span data-id="48">Import Data</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main data-id="49" class="max-w-[1440px] mx-auto px-4 md:px-6 py-4 md:py-6">
+        <!-- TAB: DASHBOARD -->
+        <section data-id="50" id="tab-dashboard-d5m1" class="fade-in">
+            <!-- Backup Tip Banner -->
+            <div data-id="51" id="backup-tip-banner-b5h7" class="bg-bg-card rounded-card border border-accent/20 p-3 mb-4 flex items-start gap-3">
+                <span data-id="52" class="text-lg shrink-0 mt-0.5">💡</span>
+                <div data-id="53" class="flex-1 min-w-0">
+                    <p data-id="54" class="text-sm text-txt-secondary"><span data-id="55" class="font-semibold text-accent-light">Tip:</span> Export your data regularly and import it on any device to keep your hives in sync. Use the <span data-id="56" class="font-semibold text-accent-light">Export</span> &amp; <span data-id="57" class="font-semibold text-accent-light">Import</span> buttons in the header to back up and restore your data.</p>
+                </div>
+                <button data-id="58" id="dismiss-tip-btn-d6i8" class="text-txt-muted hover:text-txt p-1 shrink-0" title="Dismiss">
+                    <i data-id="59" data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <!-- Stats Bar -->
+            <div data-id="60" id="stats-bar-s8k3" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6"></div>
+            <!-- Hive Grid -->
+            <h2 data-id="61" class="text-lg font-bold text-txt mb-4">Your Hives</h2>
+            <div data-id="62" id="hive-grid-g4n7" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- TAB: INSPECT -->
+        <section data-id="63" id="tab-inspect-i2p6" class="hidden fade-in">
+            <div data-id="64" class="flex flex-col md:flex-row gap-4 md:gap-6">
+                <!-- Sidebar -->
+                <aside data-id="65" id="inspect-sidebar-a1b3" class="w-full md:w-56 lg:w-64 shrink-0">
+                    <div data-id="66" class="bg-bg-card rounded-card border border-bg-hover/50 overflow-hidden">
+                        <div data-id="67" class="px-4 py-3 border-b border-bg-hover/50">
+                            <h3 data-id="68" class="text-sm font-bold text-txt-secondary uppercase tracking-wider">Hives</h3>
+                        </div>
+                        <div data-id="69" id="sidebar-hive-list-l9w4" class="max-h-[60vh] overflow-y-auto"></div>
+                        <div data-id="70" class="p-3 border-t border-bg-hover/50">
+                            <button data-id="71" id="add-hive-sidebar-btn-q7e2" class="btn-secondary text-xs w-full flex items-center justify-center gap-1">
+                                <i data-id="72" data-lucide="plus" class="w-3 h-3"></i> Add Hive
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+                <!-- Main Inspect Content -->
+                <div data-id="73" class="flex-1 flex flex-col lg:flex-row gap-4 md:gap-6">
+                    <!-- Hive Structure Panel -->
+                    <div data-id="74" id="hive-structure-panel-p3r8" class="w-full lg:w-[38%] shrink-0">
+                        <div data-id="75" class="bg-bg-card rounded-card border border-bg-hover/50 p-4">
+                            <div data-id="76" class="flex items-center justify-between mb-4">
+                                <h3 data-id="77" id="structure-hive-name-n5t1" class="text-base font-bold text-accent-light">Select a Hive</h3>
+                                <button data-id="78" id="add-super-btn-u8y3" class="btn-secondary text-xs flex items-center gap-1 px-2 py-1">
+                                    <i data-id="79" data-lucide="plus" class="w-3 h-3"></i> Add Box
+                                </button>
+                            </div>
+                            <div data-id="80" id="hive-stack-visual-v2k6" class="space-y-2"></div>
+                        </div>
+                    </div>
+                    <!-- Frame Detail Panel -->
+                    <div data-id="81" id="frame-detail-panel-f6j9" class="flex-1">
+                        <div data-id="82" id="frame-detail-content-c8m4" class="bg-bg-card rounded-card border border-bg-hover/50 p-4 md:p-6">
+                            <div data-id="83" id="no-frame-selected-s1w5" class="text-center py-16 text-txt-muted">
+                                <i data-id="84" data-lucide="scan-search" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+                                <p data-id="85" class="text-sm">Select a frame from the hive stack to view details</p>
+                            </div>
+                            <div data-id="86" id="frame-info-area-a3d7" class="hidden"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: HISTORY -->
+        <section data-id="87" id="tab-history-h7r2" class="hidden fade-in">
+            <div data-id="88" class="flex flex-col md:flex-row gap-4 md:gap-6">
+                <!-- Sidebar for History -->
+                <aside data-id="89" id="history-sidebar-s4k1" class="w-full md:w-56 lg:w-64 shrink-0">
+                    <div data-id="90" class="bg-bg-card rounded-card border border-bg-hover/50 overflow-hidden">
+                        <div data-id="91" class="px-4 py-3 border-b border-bg-hover/50">
+                            <h3 data-id="92" class="text-sm font-bold text-txt-secondary uppercase tracking-wider">Hives</h3>
+                        </div>
+                        <div data-id="93" id="history-sidebar-list-l2n8" class="max-h-[60vh] overflow-y-auto"></div>
+                    </div>
+                </aside>
+                <div data-id="94" class="flex-1">
+                    <!-- Filter Bar -->
+                    <div data-id="95" class="bg-bg-card rounded-card border border-bg-hover/50 p-4 mb-4">
+                        <div data-id="96" class="flex flex-wrap items-end gap-3">
+                            <div data-id="97" class="flex-1 min-w-[140px]">
+                                <label data-id="98" class="block text-xs text-txt-muted mb-1">Hive</label>
+                                <select data-id="99" id="history-filter-hive-h3f9" class="w-full text-sm"><option data-id="100" value="">All Hives</option></select>
+                            </div>
+                            <div data-id="101" class="flex-1 min-w-[140px]">
+                                <label data-id="102" class="block text-xs text-txt-muted mb-1">Box</label>
+                                <select data-id="103" id="history-filter-box-b5g2" class="w-full text-sm"><option data-id="104" value="">All Boxes</option></select>
+                            </div>
+                            <div data-id="105" class="flex-1 min-w-[120px]">
+                                <label data-id="106" class="block text-xs text-txt-muted mb-1">From</label>
+                                <input data-id="107" type="date" id="history-filter-from-f7k4" class="w-full text-sm" />
+                            </div>
+                            <div data-id="108" class="flex-1 min-w-[120px]">
+                                <label data-id="109" class="block text-xs text-txt-muted mb-1">To</label>
+                                <input data-id="110" type="date" id="history-filter-to-t9l6" class="w-full text-sm" />
+                            </div>
+                            <div data-id="111" class="flex-1 min-w-[140px]">
+                                <label data-id="112" class="block text-xs text-txt-muted mb-1">Condition</label>
+                                <select data-id="113" id="history-filter-condition-c1m8" class="w-full text-sm">
+                                    <option data-id="114" value="">All</option>
+                                    <option data-id="115">Excellent</option><option data-id="116">Good</option><option data-id="117">Fair</option>
+                                    <option data-id="118">Needs Attention</option><option data-id="119">Critical</option>
+                                </select>
+                            </div>
+                            <button data-id="120" id="history-export-btn-e6p3" class="btn-secondary text-xs flex items-center gap-1 px-3 py-2 whitespace-nowrap">
+                                <i data-id="121" data-lucide="download" class="w-3 h-3"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <!-- History Table -->
+                    <div data-id="122" class="bg-bg-card rounded-card border border-bg-hover/50 overflow-hidden">
+                        <div data-id="123" class="overflow-x-auto">
+                            <table data-id="124" class="w-full text-left text-sm">
+                                <thead data-id="125" class="bg-bg-secondary text-xs font-medium uppercase tracking-wide text-txt-muted">
+                                    <tr data-id="126">
+                                        <th data-id="127" class="px-4 py-3 cursor-pointer" data-sort="date">Date <i data-id="128" data-lucide="chevrons-up-down" class="w-3 h-3 inline"></i></th>
+                                        <th data-id="129" class="px-4 py-3 cursor-pointer" data-sort="hive">Hive <i data-id="130" data-lucide="chevrons-up-down" class="w-3 h-3 inline"></i></th>
+                                        <th data-id="131" class="px-4 py-3">Scope</th>
+                                        <th data-id="132" class="px-4 py-3">Frame</th>
+                                        <th data-id="133" class="px-4 py-3 cursor-pointer" data-sort="condition">Condition</th>
+                                        <th data-id="134" class="px-4 py-3">Brood</th>
+                                        <th data-id="135" class="px-4 py-3">Honey</th>
+                                        <th data-id="136" class="px-4 py-3">Pollen</th>
+                                        <th data-id="137" class="px-4 py-3">Notes</th>
+                                        <th data-id="138" class="px-4 py-3">📷</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-id="139" id="history-table-body-b4h7" class="divide-y divide-bg-hover/30"></tbody>
+                            </table>
+                        </div>
+                        <div data-id="140" id="history-pagination-p2r5" class="flex items-center justify-between px-4 py-3 border-t border-bg-hover/30 text-xs text-txt-muted"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer data-id="141" class="text-center py-6 text-xs text-txt-muted border-t border-bg-hover/30 mt-8">
+        Made by Copilot
+    </footer>
+
+    <!-- MODALS -->
+    <div data-id="142" id="add-hive-modal-m5k9" class="modal-overlay hidden">
+        <div data-id="143" class="bg-bg-card rounded-card border border-bg-hover p-6 w-full max-w-md mx-4 shadow-2xl fade-in">
+            <div data-id="144" class="flex items-center justify-between mb-5">
+                <h3 data-id="145" class="text-lg font-bold text-accent-light">🐝 Add New Hive</h3>
+                <button data-id="146" id="close-add-hive-modal-c3n7" class="text-txt-muted p-1"><i data-id="147" data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div data-id="148" class="space-y-4">
+                <div data-id="149">
+                    <label data-id="150" class="block text-xs text-txt-muted mb-1">Hive Name *</label>
+                    <input data-id="151" type="text" id="new-hive-name-n6r2" class="w-full" placeholder="e.g., Hive Alpha" />
+                </div>
+                <div data-id="152">
+                    <label data-id="153" class="block text-xs text-txt-muted mb-1">Location</label>
+                    <input data-id="154" type="text" id="new-hive-location-l8s4" class="w-full" placeholder="e.g., Back Garden" />
+                </div>
+                <div data-id="155" class="grid grid-cols-2 gap-4">
+                    <div data-id="156">
+                        <label data-id="157" class="block text-xs text-txt-muted mb-1">Brood Boxes (1-3)</label>
+                        <select data-id="158" id="new-hive-brood-b2t6" class="w-full"><option data-id="159">1</option><option data-id="160" selected>2</option><option data-id="161">3</option></select>
+                    </div>
+                    <div data-id="162">
+                        <label data-id="163" class="block text-xs text-txt-muted mb-1">Supers (0-3)</label>
+                        <select data-id="164" id="new-hive-supers-s4u8" class="w-full"><option data-id="165" selected>0</option><option data-id="166">1</option><option data-id="167">2</option><option data-id="168">3</option></select>
+                    </div>
+                </div>
+                <div data-id="168a">
+                    <label class="block text-xs text-txt-muted mb-1">Frames Per Box</label>
+                    <select id="new-hive-frame-count-f8c10" class="w-full"><option value="8" selected>8 Frames</option><option value="10">10 Frames</option></select>
+                </div>
+            </div>
+            <div data-id="169" class="flex gap-3 mt-6">
+                <button data-id="170" id="save-new-hive-btn-s7v1" class="btn-primary flex-1">Create Hive</button>
+                <button data-id="171" id="cancel-new-hive-btn-c9w3" class="btn-secondary flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD BOX MODAL -->
+    <div data-id="172" id="add-box-modal-a4x6" class="modal-overlay hidden">
+        <div data-id="173" class="bg-bg-card rounded-card border border-bg-hover p-6 w-full max-w-sm mx-4 shadow-2xl fade-in">
+            <h3 data-id="174" class="text-lg font-bold text-accent-light mb-4">Add Box</h3>
+            <div data-id="175" class="space-y-4">
+                <div data-id="176">
+                    <label data-id="177" class="block text-xs text-txt-muted mb-1">Box Type</label>
+                    <select data-id="178" id="new-box-type-t2y8" class="w-full"><option data-id="179" value="brood">Brood Box</option><option data-id="180" value="super">Super</option></select>
+                </div>
+                <div>
+                    <label class="block text-xs text-txt-muted mb-1">Frame Count</label>
+                    <select id="new-box-frame-count-f8c10" class="w-full"><option value="8" selected>8 Frames</option><option value="10">10 Frames</option></select>
+                </div>
+            </div>
+            <div data-id="181" class="flex gap-3 mt-6">
+                <button data-id="182" id="save-new-box-btn-s5z1" class="btn-primary flex-1">Add Box</button>
+                <button data-id="183" id="cancel-new-box-btn-c7a3" class="btn-secondary flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRM -->
+    <div data-id="184" id="delete-confirm-modal-d6b4" class="modal-overlay hidden">
+        <div data-id="185" class="bg-bg-card rounded-card border border-bg-hover p-6 w-full max-w-sm mx-4 shadow-2xl fade-in">
+            <h3 data-id="186" class="text-lg font-bold text-danger mb-2">Delete Hive?</h3>
+            <p data-id="187" id="delete-confirm-text-t8c6" class="text-sm text-txt-secondary mb-6">This will permanently delete this hive and all its data.</p>
+            <div data-id="188" class="flex gap-3">
+                <button data-id="189" id="confirm-delete-btn-c1d8" class="btn-danger flex-1">Delete</button>
+                <button data-id="190" id="cancel-delete-btn-c3e2" class="btn-secondary flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORT CONFIRM MODAL -->
+    <div data-id="191" id="import-confirm-modal-i5j9" class="modal-overlay hidden">
+        <div data-id="192" class="bg-bg-card rounded-card border border-bg-hover p-6 w-full max-w-md mx-4 shadow-2xl fade-in">
+            <div data-id="193" class="flex items-center gap-3 mb-4">
+                <div data-id="194" class="w-10 h-10 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
+                    <i data-id="195" data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
+                </div>
+                <h3 data-id="196" class="text-lg font-bold text-accent-light">Import Data?</h3>
+            </div>
+            <p data-id="197" class="text-sm text-txt-secondary mb-2">This will <span data-id="198" class="font-bold text-danger">REPLACE</span> all current data with the imported file.</p>
+            <div data-id="199" id="import-preview-info-i6k1" class="bg-bg rounded-input border border-bg-hover/50 p-3 mb-4">
+                <p data-id="200" class="text-xs text-txt-muted">File details will appear here...</p>
+            </div>
+            <p data-id="201" class="text-xs text-txt-muted mb-5">This action cannot be undone. Make sure you've exported your current data first if you want to keep it.</p>
+            <div data-id="202" class="flex gap-3">
+                <button data-id="203" id="confirm-import-btn-c7l3" class="btn-primary flex-1 flex items-center justify-center gap-2">
+                    <i data-id="204" data-lucide="check" class="w-4 h-4"></i> Yes, Import
+                </button>
+                <button data-id="205" id="cancel-import-btn-c8m4" class="btn-secondary flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIGHTBOX -->
+    <div data-id="206" id="lightbox-overlay-l4f5" class="lightbox hidden">
+        <button data-id="207" id="lightbox-close-btn-c5g7" class="absolute top-4 right-4 text-white p-2 z-[101]"><i data-id="208" data-lucide="x" class="w-8 h-8"></i></button>
+        <img data-id="209" id="lightbox-image-i6h9" class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" alt="Full size photo" />
+    </div>
+
+    <script>
+    // ── Guard for Lucide ──
+    if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+        lucide.createIcons();
+    }
+
+    // URL banner removed
+    document.body.style.paddingTop = '56px';
+
+    // ══════════════════════════════════════
+    //  TOAST NOTIFICATION SYSTEM
+    // ══════════════════════════════════════
+    function showToast(message, type = 'success', duration = 3000) {
+        const container = document.getElementById('toast-container-t1a1');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        let iconName = 'check-circle';
+        if (type === 'error') iconName = 'alert-circle';
+        if (type === 'info') iconName = 'info';
+
+        toast.innerHTML = `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">${getToastIconPath(iconName)}</svg><span>${message}</span>`;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('toast-out');
+            toast.addEventListener('animationend', () => toast.remove());
+        }, duration);
+    }
+
+    function getToastIconPath(name) {
+        const paths = {
+            'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',
+            'alert-circle': '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',
+            'info': '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
+        };
+        return paths[name] || paths['info'];
+    }
+
+    // ══════════════════════════════════════
+    //  UTILITY
+    // ══════════════════════════════════════
+    function uuid() {
+        return 'xxxx-xxxx-xxxx'.replace(/x/g, () => ((Math.random()*16)|0).toString(16));
+    }
+
+    const STORAGE_KEY = 'hivelog_data_v2';
+
+    function loadData() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return null;
+    }
+
+    function estimateDataSizeKB(data) {
+        try { return Math.round((JSON.stringify(data).length * 2) / 1024); } catch(e) { return 0; }
+    }
+    function saveData(data) {
+        try {
+            const payload = JSON.stringify(data);
+            localStorage.setItem(STORAGE_KEY, payload);
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) throw new Error('Storage verification failed');
+            const sizeKB = Math.round((payload.length * 2) / 1024);
+            if (sizeKB > 3500) showToast('Storage is getting large. Export a backup soon.', 'info', 4500);
+            return true;
+        } catch(e) {
+            console.error('HiveLog save failed:', e);
+            alert('HiveLog could not save this change on this device. Export a backup now, then reduce photo size/count if needed.');
+            showToast('Save failed — export backup now', 'error', 6000);
+            return false;
+        }
+    }
+    function compressImageFile(file, maxSize = 1280, quality = 0.72) {
+        return new Promise((resolve) => {
+            if (!file || !file.type || !file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ name: file.name, dataUrl: reader.result, type: file.type && file.type.startsWith('video') ? 'video' : 'file' });
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(file);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    const scale = Math.min(1, maxSize / Math.max(w, h));
+                    w = Math.round(w * scale); h = Math.round(h * scale);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', dataUrl: canvas.toDataURL('image/jpeg', quality), type: 'image' });
+                };
+                img.onerror = () => resolve({ name: file.name, dataUrl: reader.result, type: 'image' });
+                img.src = reader.result;
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function normalizeAppData(data) {
+        if (!data || !Array.isArray(data.hives)) data = { hives: [] };
+        data.hives.forEach(h => {
+            h.inspections = Array.isArray(h.inspections) ? h.inspections : [];
+            h.inspections.forEach(ins => { if (!ins.id) ins.id = uuid(); ins.photos = Array.isArray(ins.photos) ? ins.photos : []; ins.frameDetails = Array.isArray(ins.frameDetails) ? ins.frameDetails : []; });
+            h.notes = h.notes || '';
+            h.media = Array.isArray(h.media) ? h.media : [];
+            h.boxes = Array.isArray(h.boxes) ? h.boxes : [];
+            h.boxes.forEach(b => {
+                b.frames = Array.isArray(b.frames) ? b.frames : [];
+                b.frames.forEach((f, i) => {
+                    f.number = f.number || (i + 1);
+                    f.frameId = f.frameId || `Frame ${i + 1}`;
+                    f.inspections = Array.isArray(f.inspections) ? f.inspections : [];
+                    f.inspections.forEach(ins => { if (!ins.id) ins.id = uuid(); ins.photos = Array.isArray(ins.photos) ? ins.photos : []; });
+                    f.notes = f.notes || '';
+                    f.media = Array.isArray(f.media) ? f.media : [];
+                });
+            });
+        });
+        return data;
+    }
+
+    // ── Seed Data ──
+    function createSeedData() {
+        const hiveId = uuid();
+        const bb1Id = uuid(), bb2Id = uuid(), s1Id = uuid();
+
+        function makeFrames(boxLabel, boxIdx) {
+            const prefix = boxLabel.startsWith('Brood') ? `BB${boxIdx}` : `S${boxIdx}`;
+            return Array.from({length:8}, (_,i) => ({
+                id: uuid(), number: i+1, frameId: `${prefix}-F${i+1}`, inspections: []
+            }));
+        }
+
+        const bb1Frames = makeFrames('Brood Box 1', 1);
+        const bb2Frames = makeFrames('Brood Box 2', 2);
+        const s1Frames = makeFrames('Super 1', 1);
+
+        // Add sample inspections to BB1
+        const sampleInspections = [
+            { date:'2026-06-20', condition:'Excellent', broodPresent:true, broodType:'Capped', broodPattern:'Solid', honeyStatus:'Partial', pollenStatus:'Present', notes:'Queen sighted, healthy brood pattern. Lots of activity at the entrance.', photos:[] },
+            { date:'2026-06-10', condition:'Good', broodPresent:true, broodType:'Larvae', broodPattern:'Solid', honeyStatus:'Partial', pollenStatus:'Present', notes:'Larvae visible, good brood pattern.', photos:[] },
+            { date:'2026-05-28', condition:'Good', broodPresent:true, broodType:'Eggs', broodPattern:'Solid', honeyStatus:'Empty', pollenStatus:'Absent', notes:'Fresh eggs spotted. Queen is laying well.', photos:[] },
+        ];
+
+        bb1Frames[0].inspections = [{ id: uuid(), ...sampleInspections[0] }, { id: uuid(), ...sampleInspections[2] }];
+        bb1Frames[1].inspections = [{ id: uuid(), ...sampleInspections[1] }];
+        bb1Frames[2].inspections = [{ id: uuid(), date:'2026-06-18', condition:'Good', broodPresent:false, broodType:'', broodPattern:'', honeyStatus:'Full', pollenStatus:'Present', notes:'Full honey frame, no brood. Bees capping cells.', photos:[] }];
+        bb1Frames[3].inspections = [{ id: uuid(), date:'2026-06-15', condition:'Fair', broodPresent:true, broodType:'Eggs', broodPattern:'Spotty', honeyStatus:'Partial', pollenStatus:'Absent', notes:'Spotty egg pattern, monitoring closely.', photos:[] }];
+        bb1Frames[4].inspections = [{ id: uuid(), date:'2026-06-20', condition:'Good', broodPresent:false, broodType:'', broodPattern:'', honeyStatus:'Empty', pollenStatus:'Present', notes:'Pollen storage frame.', photos:[] }];
+        bb1Frames[6].inspections = [{ id: uuid(), date:'2026-06-05', condition:'Needs Attention', broodPresent:false, broodType:'', broodPattern:'', honeyStatus:'Empty', pollenStatus:'Absent', notes:'Empty frame — bees have not drawn comb yet.', photos:[] }];
+
+        // BB2 sample
+        bb2Frames[0].inspections = [{ id: uuid(), date:'2026-06-20', condition:'Good', broodPresent:true, broodType:'Capped', broodPattern:'Solid', honeyStatus:'Partial', pollenStatus:'Present', notes:'Strong capped brood, good pattern.', photos:[] }];
+        bb2Frames[1].inspections = [{ id: uuid(), date:'2026-06-18', condition:'Excellent', broodPresent:true, broodType:'Larvae', broodPattern:'Solid', honeyStatus:'Partial', pollenStatus:'Present', notes:'Excellent larvae development.', photos:[] }];
+
+        // Super sample
+        s1Frames[0].inspections = [{ id: uuid(), date:'2026-06-22', condition:'Good', broodPresent:false, broodType:'', broodPattern:'', honeyStatus:'Full', pollenStatus:'Absent', notes:'Fully capped honey frame! Ready for harvest soon.', photos:[] }];
+        s1Frames[1].inspections = [{ id: uuid(), date:'2026-06-22', condition:'Good', broodPresent:false, broodType:'', broodPattern:'', honeyStatus:'Partial', pollenStatus:'Absent', notes:'About 60% capped.', photos:[] }];
+
+        return {
+            hives: [{
+                id: hiveId, name: 'Hive Alpha', location: 'Back Garden', createdDate: '2026-04-15', notes: '', media: [], inspections: [],
+                boxes: [
+                    { id: bb1Id, type:'brood', label:'Brood Box 1', position:1, frames: bb1Frames },
+                    { id: bb2Id, type:'brood', label:'Brood Box 2', position:2, frames: bb2Frames },
+                    { id: s1Id, type:'super', label:'Super 1', position:3, frames: s1Frames }
+                ]
+            }]
+        };
+    }
+
+    // ══════════════════════════════════════
+    //  APP STATE
+    // ══════════════════════════════════════
+    let appData = normalizeAppData(loadData() || createSeedData());
+    saveData(appData);
+
+    let currentTab = 'dashboard';
+    let selectedHiveId = appData.hives[0]?.id || null;
+    let selectedFrameId = null;
+    let selectedBoxId = null;
+    let deleteTargetHiveId = null;
+    let inspectionFormOpen = false;
+    let hiveInspectionFormOpen = false;
+    let pendingHiveInspectionPhotos = [];
+    let pendingHiveFrameDetails = [];
+    let pendingHiveFrameDetailPhotos = [];
+    let pendingImportData = null;
+
+    // History state
+    let historySortCol = 'date';
+    let historySortDir = 'desc';
+    let historyPage = 1;
+    const HISTORY_PAGE_SIZE = 12;
+
+    // Tip banner dismiss state
+    const TIP_DISMISSED_KEY = 'hivelog_tip_dismissed';
+    if (localStorage.getItem(TIP_DISMISSED_KEY) === 'true') {
+        const tipBanner = document.getElementById('backup-tip-banner-b5h7');
+        if (tipBanner) tipBanner.classList.add('hidden');
+    }
+
+    // ══════════════════════════════════════
+    //  HELPERS
+    // ══════════════════════════════════════
+    function getHive(id) { return appData.hives.find(h => h.id === id); }
+
+    function getFrameStatus(frame) {
+        if (!frame.inspections.length) return { type: 'uninspected', color: '#3a3a3a', label: '?' };
+        const latest = frame.inspections.sort((a,b) => b.date.localeCompare(a.date))[0];
+        if (latest.honeyStatus === 'Empty' && !latest.broodPresent && latest.pollenStatus !== 'Present')
+            return { type: 'empty', color: '#4a3a28', label: 'E' };
+        if (latest.broodPresent && (latest.honeyStatus === 'Full' || latest.honeyStatus === 'Partial'))
+            return { type: 'mixed', color: '#c0392b', label: 'B+H', secondary: '#f0b429' };
+        if (latest.broodPresent) return { type: 'brood', color: '#c0392b', label: 'B' };
+        if (latest.honeyStatus === 'Full' || latest.honeyStatus === 'Partial')
+            return { type: 'honey', color: '#f0b429', label: 'H' };
+        if (latest.pollenStatus === 'Present') return { type: 'pollen', color: '#7eb05a', label: 'P' };
+        return { type: 'empty', color: '#4a3a28', label: 'E' };
+    }
+
+    function getHiveFrameDetailsForFrame(hive, box, frame) {
+        const details = [];
+        (hive.inspections || []).forEach(hIns => {
+            (hIns.frameDetails || []).forEach(fd => {
+                if (fd.frameDbId === frame.id || fd.frameId === frame.frameId) {
+                    details.push({ ...fd, hiveInspectionId: hIns.id, hiveInspectionDate: hIns.date, hiveInspectionCondition: hIns.condition });
+                }
+            });
+        });
+        (frame.inspections || []).forEach(fd => {
+            details.push({ ...fd, legacyFrameOnly: true, hiveInspectionId: '', hiveInspectionDate: fd.date, hiveInspectionCondition: fd.condition });
+        });
+        details.sort((a,b) => (b.date || '').localeCompare(a.date || ''));
+        return details;
+    }
+    function getFrameStatusFromHive(hive, box, frame) {
+        const details = getHiveFrameDetailsForFrame(hive, box, frame);
+        if (!details.length) return getFrameStatus(frame);
+        const latest = details[0];
+        if (latest.honeyStatus === 'Empty' && !latest.broodPresent && latest.pollenStatus !== 'Present') return { type: 'empty', color: '#4a3a28', label: 'E' };
+        if (latest.broodPresent && (latest.honeyStatus === 'Full' || latest.honeyStatus === 'Partial')) return { type: 'mixed', color: '#c0392b', label: 'B+H', secondary: '#f0b429' };
+        if (latest.broodPresent) return { type: 'brood', color: '#c0392b', label: 'B' };
+        if (latest.honeyStatus === 'Full' || latest.honeyStatus === 'Partial') return { type: 'honey', color: '#f0b429', label: 'H' };
+        if (latest.pollenStatus === 'Present') return { type: 'pollen', color: '#7eb05a', label: 'P' };
+        return { type: 'empty', color: '#4a3a28', label: 'E' };
+    }
+    function getFrameOptionsHTML(hive) {
+        return (hive.boxes || []).map(box => (box.frames || []).map(frame => `<option value="${box.id}|${frame.id}">${escapeHTML(box.label)} — ${escapeHTML(frame.frameId)}</option>`).join('')).join('');
+    }
+
+    function conditionClass(c) {
+        const map = { 'Excellent':'condition-excellent','Good':'condition-good','Fair':'condition-fair','Needs Attention':'condition-needs-attention','Critical':'condition-critical' };
+        return map[c] || 'condition-fair';
+    }
+
+    function formatDate(d) {
+        if (!d) return '—';
+        const dt = new Date(d + 'T12:00:00');
+        return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    function escapeHTML(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getAllInspections() {
+        const all = [];
+        appData.hives.forEach(h => {
+            (h.inspections || []).forEach(ins => {
+                all.push({
+                    ...ins,
+                    recordScope: 'Hive Inspection',
+                    hiveName: h.name,
+                    hiveId: h.id,
+                    boxLabel: 'Whole Hive',
+                    boxId: '',
+                    frameId: 'Hive',
+                    frameDbId: `hive-${h.id}`,
+                    broodPresent: (ins.broodStatus || '') === 'Present',
+                    broodType: ins.broodStatus || '',
+                    broodPattern: '',
+                    honeyStatus: ins.honeyStatus || '',
+                    pollenStatus: ins.pollenStatus || '',
+                    frameDetails: Array.isArray(ins.frameDetails) ? ins.frameDetails : []
+                });
+            });
+        });
+        return all;
+    }
+
+    function getLastInspectionDate(hive) {
+        let latest = null;
+        (hive.inspections || []).forEach(ins => {
+            if (!latest || ins.date > latest) latest = ins.date;
+            (ins.frameDetails || []).forEach(fd => { if (!latest || fd.date > latest) latest = fd.date; });
+        });
+        (hive.boxes || []).forEach(b => b.frames.forEach(f => (f.inspections || []).forEach(ins => { if (!latest || ins.date > latest) latest = ins.date; })));
+        return latest;
+    }
+
+    function reCreateIcons() {
+        if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+            lucide.createIcons();
+        }
+    }
+
+    // ══════════════════════════════════════
+    //  EXPORT & IMPORT SYSTEM
+    // ══════════════════════════════════════
+    function exportData() {
+        try {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            const exportPayload = {
+                _hivelog_backup: true,
+                _version: 2,
+                _exportDate: today.toISOString(),
+                _exportedBy: 'HiveLog',
+                hives: appData.hives
+            };
+            const jsonStr = JSON.stringify(exportPayload, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hivelog-backup-${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Data exported successfully!', 'success');
+        } catch (e) {
+            showToast('Export failed. Please try again.', 'error');
+        }
+    }
+
+    function triggerImport() {
+        const fileInput = document.getElementById('import-file-input-i1b2');
+        fileInput.value = '';
+        fileInput.click();
+    }
+
+    function handleImportFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            try {
+                const parsed = JSON.parse(reader.result);
+                if (!validateImportData(parsed)) {
+                    showToast('Invalid backup file. Please select a valid HiveLog export.', 'error', 4000);
+                    return;
+                }
+                pendingImportData = parsed;
+                showImportConfirmation(parsed);
+            } catch (e) {
+                showToast('Invalid backup file. Please select a valid HiveLog export.', 'error', 4000);
+            }
+        });
+        reader.addEventListener('error', () => {
+            showToast('Failed to read file. Please try again.', 'error');
+        });
+        reader.readAsText(file);
+    }
+
+    function validateImportData(data) {
+        if (!data || typeof data !== 'object') return false;
+        const hives = data.hives;
+        if (!Array.isArray(hives)) return false;
+        for (const hive of hives) {
+            if (!hive || typeof hive !== 'object') return false;
+            if (!hive.id || !hive.name) return false;
+            if (!Array.isArray(hive.boxes)) return false;
+        }
+        return true;
+    }
+
+    function showImportConfirmation(data) {
+        const hiveCount = data.hives.length;
+        let totalInspections = 0;
+        let totalFrames = 0;
+        data.hives.forEach(h => {
+            totalInspections += (h.inspections || []).length;
+            h.boxes.forEach(b => {
+                totalFrames += (b.frames || []).length;
+                (b.frames || []).forEach(f => {
+                    totalInspections += (f.inspections || []).length;
+                });
+            });
+        });
+
+        const previewEl = document.getElementById('import-preview-info-i6k1');
+        previewEl.innerHTML = `
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div>
+                    <div class="text-lg font-bold text-accent-light tabular-nums">${hiveCount}</div>
+                    <div class="text-[10px] text-txt-muted uppercase tracking-wider">Hive${hiveCount !== 1 ? 's' : ''}</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-accent-light tabular-nums">${totalFrames}</div>
+                    <div class="text-[10px] text-txt-muted uppercase tracking-wider">Frames</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-accent-light tabular-nums">${totalInspections}</div>
+                    <div class="text-[10px] text-txt-muted uppercase tracking-wider">Inspections</div>
+                </div>
+            </div>
+            ${data._exportDate ? `<p class="text-[10px] text-txt-muted text-center mt-2">Exported: ${formatDate(data._exportDate.split('T')[0])}</p>` : ''}
+        `;
+        document.getElementById('import-confirm-modal-i5j9').classList.remove('hidden');
+        reCreateIcons();
+    }
+
+    function confirmImport() {
+        if (!pendingImportData) return;
+        try {
+            appData = normalizeAppData({ hives: pendingImportData.hives });
+            saveData(appData);
+            selectedHiveId = appData.hives[0]?.id || null;
+            selectedFrameId = null;
+            selectedBoxId = null;
+            inspectionFormOpen = false;
+            hiveInspectionFormOpen = false;
+            document.getElementById('import-confirm-modal-i5j9').classList.add('hidden');
+            switchTab(currentTab);
+            const hiveCount = appData.hives.length;
+            showToast(`Data imported successfully! ${hiveCount} hive${hiveCount !== 1 ? 's' : ''} loaded.`, 'success');
+            pendingImportData = null;
+        } catch (e) {
+            showToast('Import failed. Please try again.', 'error');
+        }
+    }
+
+    // ══════════════════════════════════════
+    //  RENDER: TABS
+    // ══════════════════════════════════════
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tab-dashboard-d5m1').classList.toggle('hidden', tab !== 'dashboard');
+        document.getElementById('tab-inspect-i2p6').classList.toggle('hidden', tab !== 'inspect');
+        document.getElementById('tab-history-h7r2').classList.toggle('hidden', tab !== 'history');
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.tab === tab);
+        });
+
+        if (tab === 'dashboard') renderDashboard();
+        if (tab === 'inspect') renderInspectTab();
+        if (tab === 'history') renderHistoryTab();
+    }
+
+    // ══════════════════════════════════════
+    //  RENDER: DASHBOARD
+    // ══════════════════════════════════════
+    function renderDashboard() {
+        const allIns = getAllInspections();
+        const seasonIns = allIns.filter(i => i.date >= '2026-01-01');
+        const today = '2026-06-25';
+        let daysSince = '—';
+        if (allIns.length) {
+            const latest = allIns.sort((a,b) => b.date.localeCompare(a.date))[0];
+            const diff = Math.floor((new Date(today) - new Date(latest.date)) / 86400000);
+            daysSince = diff;
+        }
+
+        const statsBar = document.getElementById('stats-bar-s8k3');
+        statsBar.innerHTML = `
+            <div class="stat-card"><div class="text-2xl font-bold text-accent-light tabular-nums">${appData.hives.length}</div><div class="text-xs text-txt-muted mt-1">Total Hives</div></div>
+            <div class="stat-card"><div class="text-2xl font-bold text-accent-light tabular-nums">${seasonIns.length}</div><div class="text-xs text-txt-muted mt-1">Inspections This Season</div></div>
+            <div class="stat-card"><div class="text-2xl font-bold text-accent-light tabular-nums">${new Set(appData.hives.flatMap(h => (h.inspections||[]).flatMap(ins => (ins.frameDetails||[]).map(fd => fd.frameDbId)))).size}</div><div class="text-xs text-txt-muted mt-1">Frames Inspected</div></div>
+            <div class="stat-card"><div class="text-2xl font-bold text-accent-light tabular-nums">${daysSince}</div><div class="text-xs text-txt-muted mt-1">Days Since Last Inspection</div></div>
+        `;
+
+        const grid = document.getElementById('hive-grid-g4n7');
+        if (!appData.hives.length) {
+            grid.innerHTML = `<div class="col-span-full text-center py-16 text-txt-muted"><p>No hives yet. Click "Add Hive" to get started!</p></div>`;
+            return;
+        }
+
+        grid.innerHTML = appData.hives.map(h => {
+            const broodBoxes = h.boxes.filter(b => b.type === 'brood').length;
+            const supers = h.boxes.filter(b => b.type === 'super').length;
+            const lastDate = getLastInspectionDate(h);
+            const bottomBox = h.boxes.filter(b => b.type === 'brood').sort((a,b)=>a.position-b.position)[0];
+            const miniStrip = bottomBox ? bottomBox.frames.map(f => {
+                const s = getFrameStatus(f);
+                return `<div style="width:10px;height:10px;border-radius:50%;background:${s.color};" title="${f.frameId}: ${s.label}"></div>`;
+            }).join('') : '';
+
+            return `<div class="bg-bg-card rounded-card border border-bg-hover/50 p-5 hover:border-accent/40 transition-all shadow-lg">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-txt">${h.name}</h3>
+                        <p class="text-xs text-txt-muted mt-0.5">📍 ${h.location || 'No location'}</p>
+                    </div>
+                    <div class="flex gap-1">
+                        <button class="edit-hive-btn text-txt-muted hover:text-accent p-1" data-hive-id="${h.id}" title="Edit hive name"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button class="delete-hive-btn text-txt-muted hover:text-danger p-1" data-hive-id="${h.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+                <div class="flex gap-4 text-xs text-txt-secondary mb-3">
+                    <span>📦 ${broodBoxes} brood</span>
+                    <span>🍯 ${supers} super${supers !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="text-xs text-txt-muted mb-3">Last inspection: ${formatDate(lastDate)}</div>
+                <div class="flex gap-1 mb-4">${miniStrip}</div>
+                <button class="open-hive-btn btn-primary text-xs w-full" data-hive-id="${h.id}">Open Hive</button>
+            </div>`;
+        }).join('');
+
+        reCreateIcons();
+        attachDashboardListeners();
+    }
+
+    function attachDashboardListeners() {
+        document.querySelectorAll('.open-hive-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedHiveId = btn.dataset.hiveId;
+                switchTab('inspect');
+            });
+        });
+        document.querySelectorAll('.edit-hive-btn').forEach(btn => {
+            btn.addEventListener('click', () => editHiveName(btn.dataset.hiveId));
+        });
+        document.querySelectorAll('.delete-hive-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                deleteTargetHiveId = btn.dataset.hiveId;
+                const h = getHive(deleteTargetHiveId);
+                document.getElementById('delete-confirm-text-t8c6').textContent = `This will permanently delete "${h?.name}" and all its inspection data.`;
+                document.getElementById('delete-confirm-modal-d6b4').classList.remove('hidden');
+            });
+        });
+    }
+
+    function editHiveName(hiveId) {
+        const hive = getHive(hiveId);
+        if (!hive) return;
+        const newName = prompt('Hive name:', hive.name || '');
+        if (newName === null) return;
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        hive.name = trimmed;
+        saveData(appData);
+        renderDashboard();
+        if (currentTab === 'inspect') renderInspectTab();
+        if (currentTab === 'history') renderHistoryTab();
+        showToast('Hive name updated');
+    }
+
+    // ══════════════════════════════════════
+    //  RENDER: INSPECT TAB
+    // ══════════════════════════════════════
+    function renderInspectTab() {
+        renderSidebar('sidebar-hive-list-l9w4');
+        renderHiveStack();
+        renderFrameDetail();
+    }
+
+    function renderSidebar(containerId) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = appData.hives.map(h => {
+            const boxCount = h.boxes.length;
+            const isActive = h.id === selectedHiveId;
+            return `<div class="sidebar-hive ${isActive ? 'active' : ''} px-4 py-3 flex items-center gap-3" data-hive-id="${h.id}">
+                <span class="text-lg">🐝</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold text-txt truncate">${h.name}</div>
+                    <div class="text-xs text-txt-muted">${boxCount} box${boxCount !== 1 ? 'es' : ''}</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        container.querySelectorAll('.sidebar-hive').forEach(el => {
+            el.addEventListener('click', () => {
+                selectedHiveId = el.dataset.hiveId;
+                selectedFrameId = null;
+                selectedBoxId = null;
+                inspectionFormOpen = false;
+                hiveInspectionFormOpen = false;
+                if (currentTab === 'inspect') renderInspectTab();
+                if (currentTab === 'history') renderHistoryTab();
+            });
+        });
+    }
+
+    function renderHiveStack() {
+        const hive = getHive(selectedHiveId);
+        const nameEl = document.getElementById('structure-hive-name-n5t1');
+        const stackEl = document.getElementById('hive-stack-visual-v2k6');
+
+        if (!hive) {
+            nameEl.textContent = 'Select a Hive';
+            stackEl.innerHTML = '<p class="text-sm text-txt-muted text-center py-8">No hive selected</p>';
+            return;
+        }
+
+        nameEl.innerHTML = `<span class="hive-edit-hint" title="Click to rename hive">${escapeHTML(hive.name)}</span>`;
+        nameEl.onclick = () => editHiveName(hive.id);
+        const sortedBoxes = [...hive.boxes].sort((a,b) => b.position - a.position);
+
+        stackEl.innerHTML = sortedBoxes.map(box => {
+            const isSuper = box.type === 'super';
+            const emoji = isSuper ? '🍯' : '📦';
+            return `<div class="box-wooden relative p-3 mb-1">
+                <div class="flex items-center justify-between mb-2 gap-2">
+                    <span class="text-xs font-bold text-txt-secondary">${emoji} ${box.label}</span>
+                    <div class="flex items-center gap-2">
+                        <select class="box-frame-count-select" data-box-id="${box.id}" title="Frames in this box">
+                            <option value="8" ${box.frames.length === 8 ? 'selected' : ''}>8 frames</option>
+                            <option value="10" ${box.frames.length === 10 ? 'selected' : ''}>10 frames</option>
+                        </select>
+                    <button class="remove-box-btn text-txt-muted hover:text-danger" data-box-id="${box.id}" title="Remove box">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    ${box.frames.map(f => {
+                        const s = getFrameStatusFromHive(hive, box, f);
+                        const isActive = f.id === selectedFrameId;
+                        const gradientBg = s.type === 'mixed'
+                            ? `background:linear-gradient(135deg, ${s.color} 50%, ${s.secondary} 50%);`
+                            : `background:${s.color};`;
+                        return `<div class="frame-slot ${isActive ? 'active' : ''} flex-1 h-9 rounded flex items-center justify-center text-[10px] font-bold ${s.type==='honey'||s.type==='pollen'?'text-bg':'text-txt'}" style="${gradientBg}" data-frame-id="${f.id}" data-box-id="${box.id}" title="${f.frameId} — double-click to rename"><span class="frame-name-label">${f.frameId}</span></div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }).join('') + `
+            <div class="mt-4 bg-bg-secondary/60 rounded-card border border-bg-hover/50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-bold text-txt-secondary">Hive Notes & Media</h4>
+                    <button id="save-hive-notes-btn-hm9" class="btn-secondary text-xs px-2 py-1">Save Notes</button>
+                </div>
+                <textarea id="hive-notes-textarea-hm8" class="w-full text-sm mb-3" rows="3" placeholder="Notes about this hive...">${escapeHTML(hive.notes || '')}</textarea>
+                <div class="mb-3">
+                    <label class="block text-xs text-txt-muted mb-1">Hive Photos / Media</label>
+                    <input type="file" id="hive-media-input-hm7" accept="image/*,video/*" multiple class="text-xs text-txt-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-input file:border-0 file:text-xs file:bg-bg-card file:text-txt file:cursor-pointer" />
+                </div>
+                <div id="hive-media-grid-hm6" class="flex gap-2 flex-wrap">
+                    ${((hive.media || [])).map((m,i) => `
+                        <div class="relative group">
+                            ${m.type === 'video'
+                                ? `<video src="${m.dataUrl}" class="w-16 h-16 object-cover rounded border border-bg-hover" muted controls></video>`
+                                : `<img src="${m.dataUrl}" alt="${escapeHTML(m.name)}" class="hive-media-thumb w-16 h-16 object-cover rounded border border-bg-hover cursor-pointer" />`}
+                            <button class="delete-hive-media-btn absolute -top-1.5 -right-1.5 bg-danger text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-idx="${i}">×</button>
+                        </div>
+                    `).join('') || '<p class="text-xs text-txt-muted">No hive media yet.</p>'}
+                </div>
+            </div>
+            <div class="mt-4 bg-bg-secondary/60 rounded-card border border-bg-hover/50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-bold text-txt-secondary">Hive Inspections</h4>
+                    ${!hiveInspectionFormOpen ? `<button id="new-hive-inspection-btn-hi1" class="btn-primary text-xs px-2 py-1">New Hive Inspection</button>` : ''}
+                </div>
+                ${hiveInspectionFormOpen ? `
+                    <div class="hive-inspection-card p-3 mb-3 fade-in">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <div><label class="block text-xs text-txt-muted mb-1">Date</label><input type="date" id="hive-insp-date-hi2" class="w-full text-sm" value="${new Date().toISOString().split('T')[0]}" /></div>
+                            <div><label class="block text-xs text-txt-muted mb-1">Overall Condition</label>
+                                <select id="hive-insp-condition-hi3" class="w-full text-sm"><option>Excellent</option><option selected>Good</option><option>Fair</option><option>Needs Attention</option><option>Critical</option></select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="block text-xs text-txt-muted mb-1">Brood Status</label><select id="hive-insp-brood-hi4" class="w-full text-sm"><option>Present</option><option>Not Seen</option><option>Concern</option></select></div>
+                            <div><label class="block text-xs text-txt-muted mb-1">Honey Status</label><select id="hive-insp-honey-hi5" class="w-full text-sm"><option>Full</option><option selected>Partial</option><option>Empty</option></select></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="block text-xs text-txt-muted mb-1">Pollen Status</label><select id="hive-insp-pollen-hi6" class="w-full text-sm"><option>Present</option><option selected>Absent</option></select></div>
+                            <div><label class="block text-xs text-txt-muted mb-1">Queen Seen</label><select id="hive-insp-queen-hi7" class="w-full text-sm"><option>No</option><option>Yes</option><option>Not Checked</option></select></div>
+                        </div>
+                        <div class="mb-3"><label class="block text-xs text-txt-muted mb-1">Hive Inspection Notes</label><textarea id="hive-insp-notes-hi8" class="w-full text-sm" rows="3" placeholder="Overall hive notes..."></textarea></div>
+                        <div class="mb-3">
+                            <label class="block text-xs text-txt-muted mb-1">📷 Hive Inspection Photos</label>
+                            <input type="file" id="hive-insp-photos-hi9" accept="image/*" multiple class="text-xs text-txt-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-input file:border-0 file:text-xs file:bg-bg-card file:text-txt file:cursor-pointer" />
+                            <div id="hive-insp-photo-preview-hi10" class="flex gap-2 mt-2 flex-wrap"></div>
+                        </div>
+                        <div class="mt-4 border-t border-bg-hover/40 pt-4">
+                            <h5 class="text-xs font-bold text-accent-light mb-2">Frame Details for This Hive Inspection</h5>
+                            <p class="text-[11px] text-txt-muted mb-3">Add any frame-specific notes/photos here before saving the hive inspection.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <div><label class="block text-xs text-txt-muted mb-1">Frame</label><select id="hive-frame-detail-frame-hfd1" class="w-full text-sm">${getFrameOptionsHTML(hive)}</select></div>
+                                <div><label class="block text-xs text-txt-muted mb-1">Condition</label><select id="hive-frame-detail-condition-hfd2" class="w-full text-sm"><option>Excellent</option><option selected>Good</option><option>Fair</option><option>Needs Attention</option><option>Critical</option></select></div>
+                            </div>
+                            <div class="mb-3"><label class="text-xs text-txt-muted mb-1 flex items-center gap-2">Brood Present <button id="hive-frame-detail-brood-toggle-hfd3" class="toggle-btn" type="button"></button></label>
+                                <div id="hive-frame-detail-brood-fields-hfd4" class="hidden grid grid-cols-2 gap-3 mt-2"><div><label class="block text-xs text-txt-muted mb-1">Type</label><select id="hive-frame-detail-brood-type-hfd5" class="w-full text-sm"><option>Eggs</option><option>Larvae</option><option>Capped</option></select></div><div><label class="block text-xs text-txt-muted mb-1">Pattern</label><select id="hive-frame-detail-brood-pattern-hfd6" class="w-full text-sm"><option>Solid</option><option>Spotty</option><option>Poor</option></select></div></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 mb-3"><div><label class="block text-xs text-txt-muted mb-1">Honey Status</label><select id="hive-frame-detail-honey-hfd7" class="w-full text-sm"><option>Full</option><option selected>Partial</option><option>Empty</option></select></div><div><label class="block text-xs text-txt-muted mb-1">Pollen Status</label><select id="hive-frame-detail-pollen-hfd8" class="w-full text-sm"><option>Present</option><option selected>Absent</option></select></div></div>
+                            <div class="mb-3"><label class="block text-xs text-txt-muted mb-1">Frame Notes</label><textarea id="hive-frame-detail-notes-hfd9" class="w-full text-sm" rows="2" placeholder="Frame-specific notes..."></textarea></div>
+                            <div class="mb-3"><label class="block text-xs text-txt-muted mb-1">Frame Photos</label><input type="file" id="hive-frame-detail-photos-hfd10" accept="image/*" multiple class="text-xs text-txt-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-input file:border-0 file:text-xs file:bg-bg-card file:text-txt file:cursor-pointer" /><div id="hive-frame-detail-photo-preview-hfd11" class="flex gap-2 mt-2 flex-wrap"></div></div>
+                            <button id="add-frame-detail-to-hive-inspection-hfd12" class="btn-secondary text-xs w-full mb-3" type="button">+ Add This Frame Detail to Inspection</button>
+                            <div id="pending-frame-details-list-hfd13" class="space-y-2">${pendingHiveFrameDetails.length ? pendingHiveFrameDetails.map((fd,i)=>`<div class="nested-frame-detail p-2 flex items-start gap-2"><span class="active-inspection-pill">${escapeHTML(fd.frameId)}</span><span class="text-[11px] text-txt-secondary flex-1">${escapeHTML(fd.notes || fd.condition || 'Frame detail')}</span><button class="remove-pending-frame-detail text-danger text-xs" data-idx="${i}">Remove</button></div>`).join('') : '<p class="text-[11px] text-txt-muted">No frame details added to this hive inspection yet.</p>'}</div>
+                        </div>
+                        <div class="flex gap-2"><button id="save-hive-inspection-btn-hi11" class="btn-primary text-sm flex-1">Save Hive Inspection</button><button id="cancel-hive-inspection-btn-hi12" class="btn-secondary text-sm">Cancel</button></div>
+                    </div>
+                ` : ''}
+                <div class="space-y-2 max-h-[35vh] overflow-y-auto">
+                    ${((hive.inspections || []).length ? [...(hive.inspections || [])].sort((a,b)=>b.date.localeCompare(a.date)).map(ins => `
+                        <div class="hive-inspection-card overflow-hidden">
+                            <div class="hive-inspection-header flex items-center gap-3 p-3 cursor-pointer hover:bg-bg-hover/30" data-inspection-id="${ins.id}">
+                                <span class="text-xs text-txt-muted tabular-nums w-20 shrink-0">${formatDate(ins.date)}</span>
+                                <span class="condition-pill ${conditionClass(ins.condition)}">${ins.condition}</span>
+                                <span class="text-xs text-txt-secondary flex-1 truncate">${ins.notes || 'Hive inspection'}</span>
+                                ${ins.photos?.length ? `<span class="text-[10px] text-txt-muted">📷${ins.photos.length}</span>` : ''}
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-txt-muted shrink-0 hive-inspection-chevron"></i>
+                            </div>
+                            <div class="hive-inspection-body hidden px-3 pb-3">
+                                <p class="text-xs text-txt-secondary mb-1">Brood: ${ins.broodStatus || '—'} • Honey: ${ins.honeyStatus || '—'} • Pollen: ${ins.pollenStatus || '—'} • Queen: ${ins.queenSeen || '—'}</p>
+                                ${ins.notes ? `<p class="text-xs text-txt-secondary mt-2 bg-bg/50 p-2 rounded">${escapeHTML(ins.notes)}</p>` : ''}
+                                ${ins.photos?.length ? `<div class="grid grid-cols-2 gap-2 mt-2">${ins.photos.map((p,pi)=>`<img src="${p.dataUrl}" alt="${escapeHTML(p.name || 'Photo')}" class="w-full h-24 object-cover rounded cursor-pointer hive-inspection-photo-thumb" data-photo-idx="${pi}" />`).join('')}</div>` : ''}
+                                ${(ins.frameDetails || []).length ? `<div class="mt-3 border-t border-bg-hover/40 pt-3"><h5 class="text-[11px] font-bold text-accent-light mb-2">Frame Details (${ins.frameDetails.length})</h5><div class="space-y-2">${ins.frameDetails.map(fd=>`<div class="nested-frame-detail p-2"><div class="flex flex-wrap gap-2 mb-1"><span class="active-inspection-pill">${escapeHTML(fd.frameId || 'Frame')}</span><span class="text-[11px] text-txt-muted">${escapeHTML(fd.boxLabel || '')}</span><span class="condition-pill ${conditionClass(fd.condition)}">${fd.condition || '—'}</span></div><p class="text-[11px] text-txt-secondary mb-1">Brood: ${fd.broodType || (fd.broodPresent ? 'Yes' : 'No')} • Pattern: ${fd.broodPattern || '—'} • Honey: ${fd.honeyStatus || '—'} • Pollen: ${fd.pollenStatus || '—'}</p>${fd.notes ? `<div class="text-[11px] text-txt-secondary bg-bg-secondary/40 rounded p-2 whitespace-pre-wrap">${escapeHTML(fd.notes)}</div>` : ''}${(fd.photos||[]).length ? `<div class="grid grid-cols-2 gap-2 mt-2">${fd.photos.map(p=>`<img src="${p.dataUrl}" alt="${escapeHTML(p.name || 'Photo')}" class="w-full h-20 object-cover rounded cursor-pointer hive-inspection-photo-thumb" />`).join('')}</div>` : ''}</div>`).join('')}</div></div>` : '<p class="text-[11px] text-txt-muted mt-3">No frame details saved inside this hive inspection yet.</p>'}
+                                <div class="flex gap-3 mt-3">
+                                    <button class="edit-hive-inspection-btn text-xs text-accent-light flex items-center gap-1 hover:underline" data-inspection-id="${ins.id}"><i data-lucide="pencil" class="w-3 h-3"></i> Edit</button>
+                                    <button class="delete-hive-inspection-btn text-xs text-danger flex items-center gap-1 hover:underline" data-inspection-id="${ins.id}"><i data-lucide="trash-2" class="w-3 h-3"></i> Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="text-xs text-txt-muted text-center py-4">No hive inspections yet.</p>')}
+                </div>
+            </div>`;
+
+        reCreateIcons();
+
+        // Frame click
+        stackEl.querySelectorAll('.frame-slot').forEach(el => {
+            el.addEventListener('click', () => {
+                selectedFrameId = el.dataset.frameId;
+                selectedBoxId = el.dataset.boxId;
+                inspectionFormOpen = false;
+                renderHiveStack();
+                renderFrameDetail();
+                const detailPanel = document.getElementById('frame-detail-panel-f6j9');
+                detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        });
+
+        // Frame rename — double-click a frame to name it
+        stackEl.querySelectorAll('.frame-slot').forEach(el => {
+            el.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const hive = getHive(selectedHiveId);
+                const box = hive?.boxes.find(b => b.id === el.dataset.boxId);
+                const frame = box?.frames.find(f => f.id === el.dataset.frameId);
+                if (!frame) return;
+                const newName = prompt('Frame name:', frame.frameId || '');
+                if (newName === null) return;
+                const trimmed = newName.trim();
+                if (!trimmed) return;
+                frame.frameId = trimmed;
+                saveData(appData);
+                selectedFrameId = frame.id;
+                selectedBoxId = box.id;
+                renderHiveStack();
+                renderFrameDetail();
+                showToast('Frame renamed');
+            });
+        });
+
+        // Change a box between 8 and 10 frames
+        stackEl.querySelectorAll('.box-frame-count-select').forEach(select => {
+            select.addEventListener('click', e => e.stopPropagation());
+            select.addEventListener('change', () => {
+                resizeBoxFrames(select.dataset.boxId, parseInt(select.value, 10));
+            });
+        });
+
+        // Hive notes and media
+        const hiveNotesBtn = document.getElementById('save-hive-notes-btn-hm9');
+        if (hiveNotesBtn) {
+            hiveNotesBtn.addEventListener('click', () => {
+                hive.notes = document.getElementById('hive-notes-textarea-hm8').value;
+                saveData(appData);
+                showToast('Hive notes saved');
+                renderDashboard();
+            });
+        }
+
+        const hiveMediaInput = document.getElementById('hive-media-input-hm7');
+        if (hiveMediaInput) {
+            hiveMediaInput.addEventListener('change', (e) => {
+                hive.media = hive.media || [];
+                const files = Array.from(e.target.files || []);
+                files.forEach(async file => {
+                    const processed = await compressImageFile(file, 1280, 0.72);
+                    if (!processed) return;
+                    hive.media.push({ id: uuid(), name: processed.name, type: processed.type || (file.type.startsWith('video') ? 'video' : 'image'), dataUrl: processed.dataUrl });
+                    saveData(appData);
+                    renderHiveStack();
+                });
+            });
+        }
+
+        stackEl.querySelectorAll('.hive-media-thumb').forEach(img => {
+            img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('lightbox-image-i6h9').src = img.src;
+                document.getElementById('lightbox-overlay-l4f5').classList.remove('hidden');
+            });
+        });
+
+        stackEl.querySelectorAll('.delete-hive-media-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!confirm('Delete this hive media item?')) return;
+                hive.media = hive.media || [];
+                hive.media.splice(parseInt(btn.dataset.idx), 1);
+                saveData(appData);
+                renderHiveStack();
+            });
+        });
+
+        // Hive inspection form/listeners
+        const newHiveInspectionBtn = document.getElementById('new-hive-inspection-btn-hi1');
+        if (newHiveInspectionBtn) {
+            newHiveInspectionBtn.addEventListener('click', () => {
+                hiveInspectionFormOpen = true;
+                pendingHiveInspectionPhotos = [];
+                pendingHiveFrameDetails = [];
+                pendingHiveFrameDetailPhotos = [];
+                renderHiveStack();
+            });
+        }
+        const hiveInspectionPhotoInput = document.getElementById('hive-insp-photos-hi9');
+        if (hiveInspectionPhotoInput) {
+            hiveInspectionPhotoInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                files.forEach(async file => {
+                    const processed = await compressImageFile(file, 1280, 0.72);
+                    if (!processed) return;
+                    pendingHiveInspectionPhotos.push({ name: processed.name, dataUrl: processed.dataUrl });
+                    renderHiveInspectionPhotoPreview();
+                });
+            });
+        }
+        const frameBroodToggle = document.getElementById('hive-frame-detail-brood-toggle-hfd3');
+        if (frameBroodToggle) {
+            frameBroodToggle.addEventListener('click', () => {
+                frameBroodToggle.classList.toggle('active');
+                document.getElementById('hive-frame-detail-brood-fields-hfd4').classList.toggle('hidden');
+            });
+        }
+        const framePhotoInput = document.getElementById('hive-frame-detail-photos-hfd10');
+        if (framePhotoInput) {
+            framePhotoInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []).slice(0, 4 - pendingHiveFrameDetailPhotos.length);
+                files.forEach(async file => {
+                    const processed = await compressImageFile(file, 1280, 0.72);
+                    if (!processed) return;
+                    if (pendingHiveFrameDetailPhotos.length < 4) {
+                        pendingHiveFrameDetailPhotos.push({ name: processed.name, dataUrl: processed.dataUrl });
+                        renderHiveFrameDetailPhotoPreview();
+                    }
+                });
+            });
+        }
+        const addFrameDetailBtn = document.getElementById('add-frame-detail-to-hive-inspection-hfd12');
+        if (addFrameDetailBtn) {
+            addFrameDetailBtn.addEventListener('click', () => {
+                const selector = document.getElementById('hive-frame-detail-frame-hfd1');
+                if (!selector || !selector.value) return;
+                const [boxId, frameDbId] = selector.value.split('|');
+                const box = hive.boxes.find(b => b.id === boxId);
+                const frame = box?.frames.find(f => f.id === frameDbId);
+                if (!box || !frame) return;
+                const broodOn = document.getElementById('hive-frame-detail-brood-toggle-hfd3')?.classList.contains('active');
+                pendingHiveFrameDetails.push({
+                    id: uuid(),
+                    date: document.getElementById('hive-insp-date-hi2').value,
+                    condition: document.getElementById('hive-frame-detail-condition-hfd2').value,
+                    broodPresent: broodOn || false,
+                    broodType: broodOn ? document.getElementById('hive-frame-detail-brood-type-hfd5').value : '',
+                    broodPattern: broodOn ? document.getElementById('hive-frame-detail-brood-pattern-hfd6').value : '',
+                    honeyStatus: document.getElementById('hive-frame-detail-honey-hfd7').value,
+                    pollenStatus: document.getElementById('hive-frame-detail-pollen-hfd8').value,
+                    notes: document.getElementById('hive-frame-detail-notes-hfd9').value,
+                    photos: [...pendingHiveFrameDetailPhotos],
+                    frameDbId: frame.id,
+                    frameId: frame.frameId,
+                    frameNumber: frame.number,
+                    boxId: box.id,
+                    boxLabel: box.label
+                });
+                pendingHiveFrameDetailPhotos = [];
+                renderHiveStack();
+            });
+        }
+        stackEl.querySelectorAll('.remove-pending-frame-detail').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pendingHiveFrameDetails.splice(parseInt(btn.dataset.idx), 1);
+                renderHiveStack();
+            });
+        });
+        const saveHiveInspectionBtn = document.getElementById('save-hive-inspection-btn-hi11');
+        if (saveHiveInspectionBtn) {
+            saveHiveInspectionBtn.addEventListener('click', () => {
+                hive.inspections = hive.inspections || [];
+                hive.inspections.push({
+                    id: uuid(),
+                    date: document.getElementById('hive-insp-date-hi2').value,
+                    condition: document.getElementById('hive-insp-condition-hi3').value,
+                    broodStatus: document.getElementById('hive-insp-brood-hi4').value,
+                    honeyStatus: document.getElementById('hive-insp-honey-hi5').value,
+                    pollenStatus: document.getElementById('hive-insp-pollen-hi6').value,
+                    queenSeen: document.getElementById('hive-insp-queen-hi7').value,
+                    notes: document.getElementById('hive-insp-notes-hi8').value,
+                    photos: [...pendingHiveInspectionPhotos],
+                    frameDetails: [...pendingHiveFrameDetails]
+                });
+                saveData(appData);
+                hiveInspectionFormOpen = false;
+                pendingHiveInspectionPhotos = [];
+                pendingHiveFrameDetails = [];
+                pendingHiveFrameDetailPhotos = [];
+                renderHiveStack();
+                renderDashboard();
+                showToast('Hive inspection saved');
+            });
+        }
+        const cancelHiveInspectionBtn = document.getElementById('cancel-hive-inspection-btn-hi12');
+        if (cancelHiveInspectionBtn) {
+            cancelHiveInspectionBtn.addEventListener('click', () => {
+                hiveInspectionFormOpen = false;
+                pendingHiveInspectionPhotos = [];
+                pendingHiveFrameDetails = [];
+                pendingHiveFrameDetailPhotos = [];
+                renderHiveStack();
+            });
+        }
+        stackEl.querySelectorAll('.hive-inspection-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const body = header.nextElementSibling;
+                const chevron = header.querySelector('.hive-inspection-chevron');
+                body.classList.toggle('hidden');
+                if (chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            });
+        });
+        stackEl.querySelectorAll('.hive-inspection-photo-thumb').forEach(img => {
+            img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('lightbox-image-i6h9').src = img.src;
+                document.getElementById('lightbox-overlay-l4f5').classList.remove('hidden');
+            });
+        });
+        stackEl.querySelectorAll('.edit-hive-inspection-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                editHiveInspection(selectedHiveId, btn.dataset.inspectionId);
+            });
+        });
+        stackEl.querySelectorAll('.delete-hive-inspection-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteHiveInspection(selectedHiveId, btn.dataset.inspectionId);
+            });
+        });
+
+        // Remove box
+        stackEl.querySelectorAll('.remove-box-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const boxId = btn.dataset.boxId;
+                if (confirm('Remove this box and all its frame data?')) {
+                    hive.boxes = hive.boxes.filter(b => b.id !== boxId);
+                    reorderBoxPositions(hive);
+                    saveData(appData);
+                    renderInspectTab();
+                }
+            });
+        });
+    }
+
+
+    function resizeBoxFrames(boxId, targetCount) {
+        const hive = getHive(selectedHiveId);
+        if (!hive) return;
+        const box = hive.boxes.find(b => b.id === boxId);
+        if (!box) return;
+        const currentCount = box.frames.length;
+        if (targetCount === currentCount) return;
+
+        const prefix = box.type === 'brood'
+            ? `BB${box.label.match(/\d+/)?.[0] || 1}`
+            : `S${box.label.match(/\d+/)?.[0] || 1}`;
+
+        if (targetCount < currentCount) {
+            const removed = box.frames.slice(targetCount);
+            const hasData = removed.some(f => (f.inspections || []).length > 0);
+            const msg = hasData
+                ? `This will remove ${currentCount - targetCount} frame(s), including inspection data. Continue?`
+                : `This will remove ${currentCount - targetCount} frame(s). Continue?`;
+            if (!confirm(msg)) {
+                renderHiveStack();
+                return;
+            }
+            box.frames = box.frames.slice(0, targetCount);
+        } else {
+            for (let i = currentCount; i < targetCount; i++) {
+                box.frames.push({
+                    id: uuid(),
+                    number: i + 1,
+                    frameId: `${prefix}-F${i+1}`,
+                    inspections: []
+                });
+            }
+        }
+
+        box.frames.forEach((f, i) => { f.number = i + 1; });
+        saveData(appData);
+        renderHiveStack();
+        renderFrameDetail();
+        renderDashboard();
+        showToast(`Box updated to ${targetCount} frames`);
+    }
+
+    function reorderBoxPositions(hive) {
+        const brood = hive.boxes.filter(b=>b.type==='brood').sort((a,b)=>a.position-b.position);
+        const supers = hive.boxes.filter(b=>b.type==='super').sort((a,b)=>a.position-b.position);
+        let pos = 1;
+        brood.forEach((b,i) => { b.position = pos++; b.label = `Brood Box ${i+1}`; });
+        supers.forEach((b,i) => { b.position = pos++; b.label = `Super ${i+1}`; });
+        hive.boxes.forEach(b => {
+            const prefix = b.type === 'brood' ? `BB${b.label.match(/\d+/)?.[0]||1}` : `S${b.label.match(/\d+/)?.[0]||1}`;
+            b.frames.forEach((f,i) => {
+                f.number = i + 1;
+                const looksDefault = /^BB\d+-F\d+$/.test(f.frameId || '') || /^S\d+-F\d+$/.test(f.frameId || '');
+                if (!f.frameId || looksDefault) f.frameId = `${prefix}-F${i+1}`;
+            });
+        });
+    }
+
+    // ══════════════════════════════════════
+    //  RENDER: FRAME DETAIL
+    // ══════════════════════════════════════
+    function renderFrameDetail() {
+        const noSel = document.getElementById('no-frame-selected-s1w5');
+        const infoArea = document.getElementById('frame-info-area-a3d7');
+
+        if (!selectedFrameId || !selectedBoxId) {
+            noSel.classList.remove('hidden');
+            infoArea.classList.add('hidden');
+            return;
+        }
+
+        const hive = getHive(selectedHiveId);
+        if (!hive) return;
+        const box = hive.boxes.find(b => b.id === selectedBoxId);
+        if (!box) return;
+        const frame = box.frames.find(f => f.id === selectedFrameId);
+        if (!frame) return;
+
+        noSel.classList.add('hidden');
+        infoArea.classList.remove('hidden');
+
+        const latest = frame.inspections.length ? [...frame.inspections].sort((a,b) => b.date.localeCompare(a.date))[0] : null;
+        const status = getFrameStatus(frame);
+
+        let broodPct = 0, honeyPct = 0, pollenPct = 0, emptyPct = 100;
+        if (latest) {
+            if (latest.broodPresent) broodPct = latest.broodPattern === 'Solid' ? 60 : latest.broodPattern === 'Spotty' ? 35 : 20;
+            if (latest.honeyStatus === 'Full') honeyPct = 80;
+            else if (latest.honeyStatus === 'Partial') honeyPct = 40;
+            if (latest.pollenStatus === 'Present') pollenPct = 15;
+            emptyPct = Math.max(0, 100 - broodPct - honeyPct - pollenPct);
+        }
+
+        const sortedInspections = [...frame.inspections].sort((a,b) => b.date.localeCompare(a.date));
+
+        let inspectionFormHTML = '';
+        if (inspectionFormOpen) {
+            inspectionFormHTML = `
+            <div class="bg-bg rounded-card border-2 border-accent/30 p-4 mb-4 fade-in">
+                <h4 class="text-sm font-bold text-accent-light mb-4">📝 New Frame Detail</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div><label class="block text-xs text-txt-muted mb-1">Date</label><input type="date" id="insp-date-d3k1" class="w-full text-sm" value="2026-06-25" /></div>
+                    <div><label class="block text-xs text-txt-muted mb-1">Condition</label>
+                        <select id="insp-condition-c4l2" class="w-full text-sm">
+                            <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Needs Attention</option><option>Critical</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-xs text-txt-muted mb-1 flex items-center gap-2">Brood Present
+                        <button id="insp-brood-toggle-t5m3" class="toggle-btn" type="button"></button>
+                    </label>
+                    <div id="insp-brood-details-d6n4" class="hidden grid grid-cols-2 gap-3 mt-2">
+                        <div><label class="block text-xs text-txt-muted mb-1">Type</label>
+                            <select id="insp-brood-type-t7o5" class="w-full text-sm"><option>Eggs</option><option>Larvae</option><option>Capped</option></select>
+                        </div>
+                        <div><label class="block text-xs text-txt-muted mb-1">Pattern</label>
+                            <select id="insp-brood-pattern-p8q6" class="w-full text-sm"><option>Solid</option><option>Spotty</option><option>Poor</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div><label class="block text-xs text-txt-muted mb-1">Honey Status</label>
+                        <select id="insp-honey-h9r7" class="w-full text-sm"><option>Full</option><option selected>Partial</option><option>Empty</option></select>
+                    </div>
+                    <div><label class="block text-xs text-txt-muted mb-1">Pollen Status</label>
+                        <select id="insp-pollen-p1s8" class="w-full text-sm"><option>Present</option><option selected>Absent</option></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-xs text-txt-muted mb-1">Notes</label>
+                    <textarea id="insp-notes-n2t9" class="w-full text-sm" rows="3" placeholder="Queen sighted, healthy brood pattern..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-xs text-txt-muted mb-1">📷 Photos (max 4)</label>
+                    <input type="file" id="insp-photos-input-p3u1" accept="image/*" multiple class="text-xs text-txt-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-input file:border-0 file:text-xs file:bg-bg-secondary file:text-txt file:cursor-pointer" />
+                    <div id="insp-photo-preview-p4v2" class="flex gap-2 mt-2 flex-wrap"></div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="save-inspection-btn-s5w3" class="btn-primary text-sm flex-1">Save Inspection</button>
+                    <button id="cancel-inspection-btn-c6x4" class="btn-secondary text-sm">Cancel</button>
+                </div>
+            </div>`;
+        }
+
+        infoArea.innerHTML = `
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <span class="bg-accent/20 text-accent-light text-xs font-bold px-3 py-1 rounded-full">${frame.frameId}</span>
+                <span class="text-sm text-txt-secondary">${box.label} • Frame ${frame.number}</span>
+                <span class="text-xs text-txt-muted ml-auto">Last: ${latest ? formatDate(latest.date) : 'Never'}</span>
+            </div>
+            ${latest ? `<div class="flex flex-wrap gap-2 mb-4">
+                <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background:rgba(192,57,43,0.15);color:#c0392b;">🥚 Brood ${broodPct}%</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background:rgba(240,180,41,0.15);color:#f0b429;">🍯 Honey ${honeyPct}%</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background:rgba(126,176,90,0.15);color:#7eb05a;">🌼 Pollen ${pollenPct}%</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background:rgba(74,58,40,0.3);color:#c4a882;">Empty ${emptyPct}%</span>
+            </div>` : ''}
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-bold text-txt-secondary uppercase tracking-wider">Frame Details</h4>
+                <span class="text-xs text-txt-muted">Add frame details while creating a Hive Inspection.</span>
+            </div>
+            ${inspectionFormHTML}
+            <div class="space-y-2 max-h-[50vh] overflow-y-auto" id="inspections-list-l8z6">
+                ${sortedInspections.length ? sortedInspections.map(ins => `
+                    <div class="bg-bg rounded-input border border-bg-hover/50 overflow-hidden">
+                        <div class="inspection-header flex items-center gap-3 p-3 cursor-pointer hover:bg-bg-hover/30 transition-colors" data-inspection-id="${ins.id}">
+                            <span class="text-xs text-txt-muted tabular-nums w-20 shrink-0">${formatDate(ins.date)}</span>
+                            <span class="condition-pill ${conditionClass(ins.condition)}">${ins.condition}</span>
+                            <div class="flex gap-1 flex-1 min-w-0 flex-wrap">
+                                ${ins.broodPresent ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-brood/20 text-brood">🥚 ${ins.broodType||'Brood'}</span>` : ''}
+                                ${ins.honeyStatus !== 'Empty' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-honey/20 text-honey">🍯 ${ins.honeyStatus}</span>` : ''}
+                                ${ins.pollenStatus === 'Present' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-pollen/20 text-pollen">🌼</span>` : ''}
+                            </div>
+                            ${ins.photos?.length ? `<span class="text-[10px] text-txt-muted">📷${ins.photos.length}</span>` : ''}
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-txt-muted shrink-0 inspection-chevron"></i>
+                        </div>
+                        <div class="inspection-body hidden px-3 pb-3">
+                            ${ins.broodPresent ? `<p class="text-xs text-txt-secondary mb-1">Brood: ${ins.broodType || '—'} / Pattern: ${ins.broodPattern || '—'}</p>` : ''}
+                            <p class="text-xs text-txt-secondary mb-1">Honey: ${ins.honeyStatus} • Pollen: ${ins.pollenStatus}</p>
+                            ${ins.notes ? `<p class="text-xs text-txt-secondary mt-2 bg-bg-secondary/40 p-2 rounded">${ins.notes}</p>` : ''}
+                            ${ins.photos?.length ? `<div class="grid grid-cols-2 gap-2 mt-2">${ins.photos.map((p,pi) => `<img src="${p.dataUrl}" alt="${p.name||'Photo'}" class="w-full h-24 object-cover rounded cursor-pointer photo-thumb" data-inspection-id="${ins.id}" data-photo-idx="${pi}" />`).join('')}</div>` : ''}
+                            <div class="flex gap-3 mt-3">
+                                ${!ins.legacyFrameOnly ? `<button class="edit-nested-frame-detail-btn text-xs text-accent-light flex items-center gap-1 hover:underline" data-hive-inspection-id="${ins.hiveInspectionId}" data-inspection-id="${ins.id}"><i data-lucide="pencil" class="w-3 h-3"></i> Edit</button>` : ''}
+                                <button class="delete-inspection-btn text-xs text-danger flex items-center gap-1 hover:underline" data-inspection-id="${ins.id}"><i data-lucide="trash-2" class="w-3 h-3"></i> Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-sm text-txt-muted text-center py-6">No frame details saved yet.</p>'}
+            </div>
+        `;
+
+        reCreateIcons();
+        attachFrameDetailListeners(frame, box);
+    }
+
+    let pendingPhotos = [];
+
+    function attachFrameDetailListeners(frame, box) {
+        const newBtn = document.getElementById('new-inspection-btn-n7y5');
+        if (newBtn) {
+            newBtn.addEventListener('click', () => {
+                inspectionFormOpen = true;
+                pendingPhotos = [];
+                renderFrameDetail();
+            });
+        }
+
+        const broodToggle = document.getElementById('insp-brood-toggle-t5m3');
+        if (broodToggle) {
+            broodToggle.addEventListener('click', () => {
+                broodToggle.classList.toggle('active');
+                const details = document.getElementById('insp-brood-details-d6n4');
+                details.classList.toggle('hidden');
+            });
+        }
+
+        const photoInput = document.getElementById('insp-photos-input-p3u1');
+        if (photoInput) {
+            photoInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files).slice(0, 4 - pendingPhotos.length);
+                files.forEach(async file => {
+                    const processed = await compressImageFile(file, 1280, 0.72);
+                    if (!processed) return;
+                    if (pendingPhotos.length < 4) {
+                        pendingPhotos.push({ name: processed.name, dataUrl: processed.dataUrl });
+                        renderPhotoPreview();
+                    }
+                });
+            });
+        }
+
+        const saveBtn = document.getElementById('save-inspection-btn-s5w3');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                const broodOn = document.getElementById('insp-brood-toggle-t5m3')?.classList.contains('active');
+                const newInspection = {
+                    id: uuid(),
+                    date: document.getElementById('insp-date-d3k1').value,
+                    condition: document.getElementById('insp-condition-c4l2').value,
+                    broodPresent: broodOn || false,
+                    broodType: broodOn ? document.getElementById('insp-brood-type-t7o5').value : '',
+                    broodPattern: broodOn ? document.getElementById('insp-brood-pattern-p8q6').value : '',
+                    honeyStatus: document.getElementById('insp-honey-h9r7').value,
+                    pollenStatus: document.getElementById('insp-pollen-p1s8').value,
+                    notes: document.getElementById('insp-notes-n2t9').value,
+                    photos: [...pendingPhotos]
+                };
+                const activeHiveInspection = ensureActiveHiveInspection(hive, newInspection.date);
+                activeHiveInspection.frameDetails = activeHiveInspection.frameDetails || [];
+                activeHiveInspection.frameDetails.push({ ...newInspection, frameDbId: frame.id, frameId: frame.frameId, frameNumber: frame.number, boxId: box.id, boxLabel: box.label });
+                saveData(appData);
+                inspectionFormOpen = false;
+                pendingPhotos = [];
+                renderHiveStack();
+                renderFrameDetail();
+                renderDashboard();
+                showToast('Frame detail added inside hive inspection');
+            });
+        }
+
+        const cancelBtn = document.getElementById('cancel-inspection-btn-c6x4');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                inspectionFormOpen = false;
+                pendingPhotos = [];
+                renderFrameDetail();
+            });
+        }
+
+        document.querySelectorAll('.inspection-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const body = header.nextElementSibling;
+                const chevron = header.querySelector('.inspection-chevron');
+                body.classList.toggle('hidden');
+                if (chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            });
+        });
+
+        document.querySelectorAll('.photo-thumb').forEach(img => {
+            img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('lightbox-image-i6h9').src = img.src;
+                document.getElementById('lightbox-overlay-l4f5').classList.remove('hidden');
+            });
+        });
+
+        document.querySelectorAll('.edit-nested-frame-detail-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                editNestedFrameDetail(selectedHiveId, btn.dataset.hiveInspectionId, btn.dataset.inspectionId);
+            });
+        });
+        document.querySelectorAll('.delete-inspection-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this inspection?')) {
+                    frame.inspections = frame.inspections.filter(i => i.id !== btn.dataset.inspectionId);
+                    saveData(appData);
+                    renderHiveStack();
+                    renderFrameDetail();
+                }
+            });
+        });
+    }
+
+    function renderPhotoPreview() {
+        const container = document.getElementById('insp-photo-preview-p4v2');
+        if (!container) return;
+        container.innerHTML = pendingPhotos.map((p,i) => `
+            <div class="relative group">
+                <img src="${p.dataUrl}" alt="${p.name}" class="w-16 h-16 object-cover rounded border border-bg-hover" />
+                <button class="remove-pending-photo absolute -top-1.5 -right-1.5 bg-danger text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-idx="${i}">×</button>
+            </div>
+        `).join('');
+        container.querySelectorAll('.remove-pending-photo').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingPhotos.splice(parseInt(btn.dataset.idx), 1);
+                renderPhotoPreview();
+            });
+        });
+    }
+
+    function renderHiveInspectionPhotoPreview() {
+        const container = document.getElementById('hive-insp-photo-preview-hi10');
+        if (!container) return;
+        container.innerHTML = pendingHiveInspectionPhotos.map((p,i) => `
+            <div class="relative group">
+                <img src="${p.dataUrl}" alt="${escapeHTML(p.name)}" class="w-16 h-16 object-cover rounded border border-bg-hover" />
+                <button class="remove-pending-hive-photo absolute -top-1.5 -right-1.5 bg-danger text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-idx="${i}">×</button>
+            </div>
+        `).join('');
+        container.querySelectorAll('.remove-pending-hive-photo').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingHiveInspectionPhotos.splice(parseInt(btn.dataset.idx), 1);
+                renderHiveInspectionPhotoPreview();
+            });
+        });
+    }
+
+    function renderHiveFrameDetailPhotoPreview() {
+        const container = document.getElementById('hive-frame-detail-photo-preview-hfd11');
+        if (!container) return;
+        container.innerHTML = pendingHiveFrameDetailPhotos.map((p,i) => `
+            <div class="relative group">
+                <img src="${p.dataUrl}" alt="${escapeHTML(p.name)}" class="w-16 h-16 object-cover rounded border border-bg-hover" />
+                <button class="remove-pending-frame-photo absolute -top-1.5 -right-1.5 bg-danger text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-idx="${i}">×</button>
+            </div>
+        `).join('');
+        container.querySelectorAll('.remove-pending-frame-photo').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingHiveFrameDetailPhotos.splice(parseInt(btn.dataset.idx), 1);
+                renderHiveFrameDetailPhotoPreview();
+            });
+        });
+    }
+
+    function editHiveInspection(hiveId, inspectionId) {
+        const hive = getHive(hiveId);
+        if (!hive) return;
+        const ins = (hive.inspections || []).find(i => i.id === inspectionId);
+        if (!ins) return;
+        const newDate = prompt('Inspection date (YYYY-MM-DD):', ins.date || '');
+        if (newDate === null) return;
+        const newCondition = prompt('Overall condition:', ins.condition || 'Good');
+        if (newCondition === null) return;
+        const newBrood = prompt('Brood status:', ins.broodStatus || ins.broodType || '');
+        if (newBrood === null) return;
+        const newHoney = prompt('Honey status:', ins.honeyStatus || '');
+        if (newHoney === null) return;
+        const newPollen = prompt('Pollen status:', ins.pollenStatus || '');
+        if (newPollen === null) return;
+        const newQueen = prompt('Queen seen:', ins.queenSeen || '');
+        if (newQueen === null) return;
+        const newNotes = prompt('Hive inspection notes:', ins.notes || '');
+        if (newNotes === null) return;
+        ins.date = newDate.trim() || ins.date;
+        ins.condition = newCondition.trim() || ins.condition;
+        ins.broodStatus = newBrood.trim();
+        ins.honeyStatus = newHoney.trim();
+        ins.pollenStatus = newPollen.trim();
+        ins.queenSeen = newQueen.trim();
+        ins.notes = newNotes;
+        saveData(appData);
+        renderHiveStack();
+        renderFrameDetail();
+        renderDashboard();
+        if (currentTab === 'history') renderHistoryTab();
+        showToast('Hive inspection updated');
+    }
+    function deleteHiveInspection(hiveId, inspectionId) {
+        const hive = getHive(hiveId);
+        if (!hive) return;
+        const ins = (hive.inspections || []).find(i => i.id === inspectionId);
+        if (!ins) return;
+        if (!confirm(`Delete hive inspection from ${formatDate(ins.date)}?`)) return;
+        hive.inspections = (hive.inspections || []).filter(i => i.id !== inspectionId);
+        saveData(appData);
+        renderHiveStack();
+        renderFrameDetail();
+        renderDashboard();
+        if (currentTab === 'history') renderHistoryTab();
+        showToast('Hive inspection deleted');
+    }
+    function editNestedFrameDetail(hiveId, inspectionId, detailId) {
+        const hive = getHive(hiveId);
+        const ins = hive?.inspections?.find(i => i.id === inspectionId);
+        const fd = ins?.frameDetails?.find(d => d.id === detailId);
+        if (!fd) return;
+        const newCondition = prompt('Frame condition:', fd.condition || 'Good');
+        if (newCondition === null) return;
+        const newBroodType = prompt('Brood type:', fd.broodType || '');
+        if (newBroodType === null) return;
+        const newBroodPattern = prompt('Brood pattern:', fd.broodPattern || '');
+        if (newBroodPattern === null) return;
+        const newHoney = prompt('Honey status:', fd.honeyStatus || '');
+        if (newHoney === null) return;
+        const newPollen = prompt('Pollen status:', fd.pollenStatus || '');
+        if (newPollen === null) return;
+        const newNotes = prompt('Frame notes:', fd.notes || '');
+        if (newNotes === null) return;
+        fd.condition = newCondition.trim() || fd.condition;
+        fd.broodType = newBroodType.trim();
+        fd.broodPresent = !!fd.broodType;
+        fd.broodPattern = newBroodPattern.trim();
+        fd.honeyStatus = newHoney.trim();
+        fd.pollenStatus = newPollen.trim();
+        fd.notes = newNotes;
+        saveData(appData);
+        renderHiveStack();
+        renderFrameDetail();
+        renderDashboard();
+        if (currentTab === 'history') renderHistoryTab();
+        showToast('Frame detail updated');
+    }
+    function deleteNestedFrameDetail(hiveId, inspectionId, detailId) {
+        const hive = getHive(hiveId);
+        const ins = hive?.inspections?.find(i => i.id === inspectionId);
+        if (!ins) return;
+        if (!confirm('Delete this frame detail from the hive inspection?')) return;
+        ins.frameDetails = (ins.frameDetails || []).filter(d => d.id !== detailId);
+        saveData(appData);
+        renderHiveStack();
+        renderFrameDetail();
+        renderDashboard();
+        if (currentTab === 'history') renderHistoryTab();
+        showToast('Frame detail deleted');
+    }
+
+    // ══════════════════════════════════════
+    //  RENDER: HISTORY TAB
+    // ══════════════════════════════════════
+    function renderHistoryTab() {
+        renderSidebar('history-sidebar-list-l2n8');
+        populateHistoryFilters();
+        renderHistoryTable();
+    }
+
+    function populateHistoryFilters() {
+        const hiveSelect = document.getElementById('history-filter-hive-h3f9');
+        const currentVal = hiveSelect.value;
+        hiveSelect.innerHTML = '<option value="">All Hives</option>' +
+            appData.hives.map(h => `<option value="${h.id}" ${h.id===currentVal?'selected':''}>${h.name}</option>`).join('');
+    }
+
+    function getFilteredHistory() {
+        let all = getAllInspections();
+        const hiveFilter = document.getElementById('history-filter-hive-h3f9').value;
+        const boxFilter = document.getElementById('history-filter-box-b5g2').value;
+        const fromFilter = document.getElementById('history-filter-from-f7k4').value;
+        const toFilter = document.getElementById('history-filter-to-t9l6').value;
+        const condFilter = document.getElementById('history-filter-condition-c1m8').value;
+
+        if (hiveFilter) all = all.filter(i => i.hiveId === hiveFilter);
+        // Box filter is ignored for hive-level inspection history because frame details are nested inside each hive inspection.
+        if (fromFilter) all = all.filter(i => i.date >= fromFilter);
+        if (toFilter) all = all.filter(i => i.date <= toFilter);
+        if (condFilter) all = all.filter(i => i.condition === condFilter);
+
+        all.sort((a,b) => {
+            let va = a[historySortCol] || '', vb = b[historySortCol] || '';
+            if (historySortCol === 'hive') { va = a.hiveName; vb = b.hiveName; }
+            const cmp = String(va).localeCompare(String(vb));
+            return historySortDir === 'asc' ? cmp : -cmp;
+        });
+
+        return all;
+    }
+
+    function renderHistoryTable() {
+        const filtered = getFilteredHistory();
+        const totalPages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE));
+        historyPage = Math.min(historyPage, totalPages);
+        const pageData = filtered.slice((historyPage-1)*HISTORY_PAGE_SIZE, historyPage*HISTORY_PAGE_SIZE);
+        const tbody = document.getElementById('history-table-body-b4h7');
+        tbody.innerHTML = pageData.length ? pageData.map(ins => {
+            const photos = ins.photos || [];
+            const frameDetails = ins.frameDetails || [];
+            const safeNotes = escapeHTML(ins.notes || '');
+            const rowId = ins.id || `${ins.hiveId}-${ins.date}`;
+            return `
+            <tr class="hover:bg-bg-hover/20 transition-colors text-sm history-main-row" data-history-row="${rowId}">
+                <td class="px-4 py-3 tabular-nums whitespace-nowrap">${formatDate(ins.date)}</td>
+                <td class="px-4 py-3 font-medium">${escapeHTML(ins.hiveName)}</td>
+                <td class="px-4 py-3 text-txt-secondary text-xs">Hive Inspection</td>
+                <td class="px-4 py-3 font-mono text-xs text-accent">${frameDetails.length ? frameDetails.length + ' frame detail' + (frameDetails.length !== 1 ? 's' : '') : 'Hive'}</td>
+                <td class="px-4 py-3"><span class="condition-pill ${conditionClass(ins.condition)}">${ins.condition}</span></td>
+                <td class="px-4 py-3">${ins.broodPresent ? `<span class="text-brood text-xs">🥚 ${escapeHTML(ins.broodType||'Yes')}</span>` : '<span class="text-txt-muted text-xs">—</span>'}</td>
+                <td class="px-4 py-3"><span class="text-honey text-xs">${ins.honeyStatus === 'Empty' ? '—' : '🍯 '+(ins.honeyStatus || '—')}</span></td>
+                <td class="px-4 py-3">${ins.pollenStatus === 'Present' ? '<span class="text-pollen text-xs">🌼</span>' : '<span class="text-txt-muted text-xs">—</span>'}</td>
+                <td class="px-4 py-3 text-xs text-txt-secondary max-w-[200px] truncate" title="${safeNotes}">${ins.notes || '—'}</td>
+                <td class="px-4 py-3 text-xs text-txt-muted whitespace-nowrap">${photos.length ? `📷${photos.length}` : ''} <button class="history-view-btn text-accent hover:underline ml-1" data-history-id="${rowId}">View</button></td>
+            </tr>
+            <tr class="history-detail-row hidden" data-history-detail="${rowId}">
+                <td colspan="10" class="px-4 py-4"><div class="bg-bg rounded-card border border-bg-hover/50 p-4">
+                    <div class="flex flex-wrap gap-2 mb-3"><span class="condition-pill ${conditionClass(ins.condition)}">${ins.condition || '—'}</span><span class="text-xs text-txt-secondary">Hive Inspection</span></div>
+                    <p class="text-xs text-txt-secondary mb-2">Brood: ${ins.broodStatus || ins.broodType || '—'} • Honey: ${ins.honeyStatus || '—'} • Pollen: ${ins.pollenStatus || '—'} • Queen: ${ins.queenSeen || '—'}</p>
+                    ${safeNotes ? `<div class="text-sm text-txt-secondary bg-bg-secondary/40 rounded p-3 whitespace-pre-wrap mb-3">${safeNotes}</div>` : '<p class="text-sm text-txt-muted mb-3">No hive notes saved.</p>'}
+                    ${photos.length ? `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">${photos.map((p)=>`<img src="${p.dataUrl}" alt="${escapeHTML(p.name || 'Photo')}" class="history-photo-thumb w-full h-28 object-cover rounded cursor-pointer border border-bg-hover" data-src="${p.dataUrl}" />`).join('')}</div>` : '<p class="text-xs text-txt-muted mb-3">No hive photos saved.</p>'}
+                    <div class="flex gap-3 mb-3"><button class="history-edit-inspection-btn text-xs text-accent-light hover:underline" data-hive-id="${ins.hiveId}" data-inspection-id="${ins.id}">Edit Inspection</button><button class="history-delete-inspection-btn text-xs text-danger hover:underline" data-hive-id="${ins.hiveId}" data-inspection-id="${ins.id}">Delete Inspection</button></div>
+                    ${frameDetails.length ? `<div class="mt-3 border-t border-bg-hover/40 pt-3"><h4 class="text-xs font-bold text-accent-light mb-2">Frame Details (${frameDetails.length})</h4><div class="space-y-2">${frameDetails.map(fd=>`<div class="nested-frame-detail p-3"><div class="flex flex-wrap gap-2 mb-1"><span class="active-inspection-pill">${escapeHTML(fd.frameId || 'Frame')}</span><span class="text-xs text-txt-muted">${escapeHTML(fd.boxLabel || '')}</span><span class="condition-pill ${conditionClass(fd.condition)}">${fd.condition || '—'}</span></div><p class="text-xs text-txt-secondary mb-1">Brood: ${fd.broodType || (fd.broodPresent ? 'Yes' : 'No')} • Pattern: ${fd.broodPattern || '—'} • Honey: ${fd.honeyStatus || '—'} • Pollen: ${fd.pollenStatus || '—'}</p>${fd.notes ? `<div class="text-xs text-txt-secondary bg-bg-secondary/40 rounded p-2 whitespace-pre-wrap">${escapeHTML(fd.notes)}</div>` : ''}${(fd.photos||[]).length ? `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">${fd.photos.map(p=>`<img src="${p.dataUrl}" alt="${escapeHTML(p.name || 'Photo')}" class="history-photo-thumb w-full h-24 object-cover rounded cursor-pointer border border-bg-hover" data-src="${p.dataUrl}" />`).join('')}</div>` : ''}<div class="flex gap-3 mt-2"><button class="history-edit-frame-detail-btn text-[11px] text-accent-light hover:underline" data-hive-id="${ins.hiveId}" data-inspection-id="${ins.id}" data-detail-id="${fd.id}">Edit Frame Detail</button><button class="history-delete-frame-detail-btn text-[11px] text-danger hover:underline" data-hive-id="${ins.hiveId}" data-inspection-id="${ins.id}" data-detail-id="${fd.id}">Delete Frame Detail</button></div></div>`).join('')}</div></div>` : '<p class="text-xs text-txt-muted mt-3">No frame details saved inside this hive inspection.</p>'}
+                </div></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="10" class="px-4 py-12 text-center text-txt-muted">No inspections found</td></tr>';
+        const pagination = document.getElementById('history-pagination-p2r5');
+        pagination.innerHTML = `<span>${filtered.length} hive inspection${filtered.length !== 1 ? 's' : ''}</span><div class="flex items-center gap-2"><button class="history-page-btn btn-secondary text-xs px-2 py-1 ${historyPage<=1?'opacity-30 pointer-events-none':''}" data-page="${historyPage-1}">← Prev</button><span class="tabular-nums">${historyPage} / ${totalPages}</span><button class="history-page-btn btn-secondary text-xs px-2 py-1 ${historyPage>=totalPages?'opacity-30 pointer-events-none':''}" data-page="${historyPage+1}">Next →</button></div>`;
+        document.querySelectorAll('.history-view-btn, .history-main-row').forEach(el => { el.addEventListener('click', () => { const id = el.dataset.historyId || el.dataset.historyRow; const detail = document.querySelector(`[data-history-detail="${id}"]`); if (detail) detail.classList.toggle('hidden'); }); });
+        document.querySelectorAll('.history-photo-thumb').forEach(img => { img.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('lightbox-image-i6h9').src = img.dataset.src || img.src; document.getElementById('lightbox-overlay-l4f5').classList.remove('hidden'); }); });
+        document.querySelectorAll('.history-edit-inspection-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); editHiveInspection(btn.dataset.hiveId, btn.dataset.inspectionId); });
+        });
+        document.querySelectorAll('.history-delete-inspection-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); deleteHiveInspection(btn.dataset.hiveId, btn.dataset.inspectionId); });
+        });
+        document.querySelectorAll('.history-edit-frame-detail-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); editNestedFrameDetail(btn.dataset.hiveId, btn.dataset.inspectionId, btn.dataset.detailId); });
+        });
+        document.querySelectorAll('.history-delete-frame-detail-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); deleteNestedFrameDetail(btn.dataset.hiveId, btn.dataset.inspectionId, btn.dataset.detailId); });
+        });
+        pagination.querySelectorAll('.history-page-btn').forEach(btn => { btn.addEventListener('click', () => { historyPage = parseInt(btn.dataset.page); renderHistoryTable(); }); });
+    }
+    // ══════════════════════════════════════
+    //  EVENT LISTENERS
+    // ══════════════════════════════════════
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('mobile-menu-n4j2').classList.add('hidden');
+            switchTab(btn.dataset.tab);
+        });
+    });
+
+    // Mobile menu
+    document.getElementById('mobile-menu-btn-m3k8').addEventListener('click', () => {
+        document.getElementById('mobile-menu-n4j2').classList.remove('hidden');
+    });
+    document.getElementById('mobile-menu-close-c2q9').addEventListener('click', () => {
+        document.getElementById('mobile-menu-n4j2').classList.add('hidden');
+    });
+
+    // Export & Import — Desktop header buttons
+    document.getElementById('export-data-btn-e1c3').addEventListener('click', exportData);
+    document.getElementById('import-data-btn-i2d4').addEventListener('click', triggerImport);
+
+    // Export & Import — Mobile menu buttons
+    document.getElementById('export-data-btn-mobile-e3f5').addEventListener('click', () => {
+        document.getElementById('mobile-menu-n4j2').classList.add('hidden');
+        exportData();
+    });
+    document.getElementById('import-data-btn-mobile-i4g6').addEventListener('click', () => {
+        document.getElementById('mobile-menu-n4j2').classList.add('hidden');
+        triggerImport();
+    });
+
+    // Import file input
+    document.getElementById('import-file-input-i1b2').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) handleImportFile(file);
+    });
+
+    // Import confirmation modal
+    document.getElementById('confirm-import-btn-c7l3').addEventListener('click', confirmImport);
+    document.getElementById('cancel-import-btn-c8m4').addEventListener('click', () => {
+        pendingImportData = null;
+        document.getElementById('import-confirm-modal-i5j9').classList.add('hidden');
+    });
+
+    // Dismiss tip banner
+    document.getElementById('dismiss-tip-btn-d6i8').addEventListener('click', () => {
+        document.getElementById('backup-tip-banner-b5h7').classList.add('hidden');
+        try { localStorage.setItem(TIP_DISMISSED_KEY, 'true'); } catch(e) {}
+    });
+
+    // Add hive modal
+    function openAddHiveModal() {
+        document.getElementById('add-hive-modal-m5k9').classList.remove('hidden');
+        document.getElementById('new-hive-name-n6r2').value = '';
+        document.getElementById('new-hive-location-l8s4').value = '';
+        document.getElementById('new-hive-brood-b2t6').value = '2';
+        document.getElementById('new-hive-supers-s4u8').value = '0';
+    }
+    document.getElementById('add-hive-btn-top-x9f1').addEventListener('click', openAddHiveModal);
+    document.getElementById('add-hive-sidebar-btn-q7e2').addEventListener('click', openAddHiveModal);
+    document.getElementById('close-add-hive-modal-c3n7').addEventListener('click', () => {
+        document.getElementById('add-hive-modal-m5k9').classList.add('hidden');
+    });
+    document.getElementById('cancel-new-hive-btn-c9w3').addEventListener('click', () => {
+        document.getElementById('add-hive-modal-m5k9').classList.add('hidden');
+    });
+
+    // Save new hive
+    document.getElementById('save-new-hive-btn-s7v1').addEventListener('click', () => {
+        const name = document.getElementById('new-hive-name-n6r2').value.trim();
+        if (!name) { document.getElementById('new-hive-name-n6r2').style.borderColor = '#c0392b'; return; }
+        const location = document.getElementById('new-hive-location-l8s4').value.trim();
+        const broodCount = parseInt(document.getElementById('new-hive-brood-b2t6').value);
+        const superCount = parseInt(document.getElementById('new-hive-supers-s4u8').value);
+        const frameCount = parseInt(document.getElementById('new-hive-frame-count-f8c10')?.value || '8', 10);
+
+        const boxes = [];
+        let pos = 1;
+        for (let i = 1; i <= broodCount; i++) {
+            const prefix = `BB${i}`;
+            boxes.push({
+                id: uuid(), type: 'brood', label: `Brood Box ${i}`, position: pos++,
+                frames: Array.from({length:frameCount}, (_,j) => ({ id: uuid(), number: j+1, frameId: `${prefix}-F${j+1}`, inspections: [] }))
+            });
+        }
+        for (let i = 1; i <= superCount; i++) {
+            const prefix = `S${i}`;
+            boxes.push({
+                id: uuid(), type: 'super', label: `Super ${i}`, position: pos++,
+                frames: Array.from({length:frameCount}, (_,j) => ({ id: uuid(), number: j+1, frameId: `${prefix}-F${j+1}`, inspections: [] }))
+            });
+        }
+
+        const newHive = { id: uuid(), name, location, createdDate: new Date().toISOString().split('T')[0], notes: '', media: [], inspections: [], boxes };
+        appData.hives.push(newHive);
+        saveData(appData);
+        selectedHiveId = newHive.id;
+        document.getElementById('add-hive-modal-m5k9').classList.add('hidden');
+        switchTab(currentTab);
+    });
+
+    // Add box modal
+    document.getElementById('add-super-btn-u8y3').addEventListener('click', () => {
+        if (!selectedHiveId) return;
+        document.getElementById('add-box-modal-a4x6').classList.remove('hidden');
+    });
+    document.getElementById('cancel-new-box-btn-c7a3').addEventListener('click', () => {
+        document.getElementById('add-box-modal-a4x6').classList.add('hidden');
+    });
+    document.getElementById('save-new-box-btn-s5z1').addEventListener('click', () => {
+        const hive = getHive(selectedHiveId);
+        if (!hive) return;
+        const type = document.getElementById('new-box-type-t2y8').value;
+        const frameCount = parseInt(document.getElementById('new-box-frame-count-f8c10')?.value || '8', 10);
+        const count = hive.boxes.filter(b => b.type === type).length + 1;
+        const label = type === 'brood' ? `Brood Box ${count}` : `Super ${count}`;
+        const prefix = type === 'brood' ? `BB${count}` : `S${count}`;
+        const pos = hive.boxes.length + 1;
+        hive.boxes.push({
+            id: uuid(), type, label, position: pos,
+            frames: Array.from({length:frameCount}, (_,j) => ({ id: uuid(), number: j+1, frameId: `${prefix}-F${j+1}`, inspections: [] }))
+        });
+        reorderBoxPositions(hive);
+        saveData(appData);
+        document.getElementById('add-box-modal-a4x6').classList.add('hidden');
+        renderInspectTab();
+    });
+
+    // Delete hive
+    document.getElementById('confirm-delete-btn-c1d8').addEventListener('click', () => {
+        if (deleteTargetHiveId) {
+            appData.hives = appData.hives.filter(h => h.id !== deleteTargetHiveId);
+            if (selectedHiveId === deleteTargetHiveId) {
+                selectedHiveId = appData.hives[0]?.id || null;
+                selectedFrameId = null;
+                selectedBoxId = null;
+            }
+            saveData(appData);
+            deleteTargetHiveId = null;
+        }
+        document.getElementById('delete-confirm-modal-d6b4').classList.add('hidden');
+        switchTab(currentTab);
+    });
+    document.getElementById('cancel-delete-btn-c3e2').addEventListener('click', () => {
+        document.getElementById('delete-confirm-modal-d6b4').classList.add('hidden');
+    });
+
+    // Lightbox
+    document.getElementById('lightbox-close-btn-c5g7').addEventListener('click', () => {
+        document.getElementById('lightbox-overlay-l4f5').classList.add('hidden');
+    });
+    document.getElementById('lightbox-overlay-l4f5').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+            document.getElementById('lightbox-overlay-l4f5').classList.add('hidden');
+        }
+    });
+
+    // History filters
+    ['history-filter-hive-h3f9','history-filter-box-b5g2','history-filter-from-f7k4','history-filter-to-t9l6','history-filter-condition-c1m8'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => { historyPage = 1; renderHistoryTable(); });
+    });
+
+    // Update box filter when hive changes
+    document.getElementById('history-filter-hive-h3f9').addEventListener('change', () => {
+        const hiveId = document.getElementById('history-filter-hive-h3f9').value;
+        const boxSelect = document.getElementById('history-filter-box-b5g2');
+        boxSelect.innerHTML = '<option value="">All Boxes</option>';
+        if (hiveId) {
+            const hive = getHive(hiveId);
+            if (hive) {
+                hive.boxes.forEach(b => {
+                    boxSelect.innerHTML += `<option value="${b.id}">${b.label}</option>`;
+                });
+            }
+        }
+    });
+
+    // History sorting
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            if (historySortCol === th.dataset.sort) {
+                historySortDir = historySortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                historySortCol = th.dataset.sort;
+                historySortDir = th.dataset.sort === 'date' ? 'desc' : 'asc';
+            }
+            renderHistoryTable();
+        });
+    });
+
+    // Export CSV
+    document.getElementById('history-export-btn-e6p3').addEventListener('click', () => {
+        const all = getFilteredHistory();
+        const headers = ['Date','Hive','Scope','Frame','Condition','Brood Present','Brood Type','Brood Pattern','Honey','Pollen','Notes'];
+        const csv = [headers.join(',')];
+        all.forEach(ins => {
+            csv.push([
+                ins.date, `"${ins.hiveName}"`, `"${ins.recordScope || ins.boxLabel}"`, ins.frameId, ins.condition,
+                ins.broodPresent?'Yes':'No', ins.broodType||'', ins.broodPattern||'',
+                ins.honeyStatus, ins.pollenStatus, `"${(ins.notes||'').replace(/"/g,'""')}"`
+            ].join(','));
+        });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'hivelog_export.csv'; a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // ══════════════════════════════════════
+    //  INITIAL RENDER
+    // ══════════════════════════════════════
+    renderDashboard();
+    </script>
+</body>
+</html>
